@@ -24,34 +24,28 @@ export default function DicePrototype() {
   return (
     <main className="die-preview-page">
       <header className="die-preview-header">
-        <Link href="/" className="die-preview-back">← Back to Lucky Five</Link>
-        <span className="eyebrow">MOTION PROTOTYPE · 01</span>
+        <Link href="/" className="die-preview-back">← Back to Petals & Pips</Link>
       </header>
       <section className="die-preview-card">
-        <div className="eyebrow"><span className="eyebrow-line" /> A LITTLE LUCK IN MOTION</div>
-        <h1>Give it a <em>roll.</em></h1>
-        <p>Rounded edges. Recessed pips. A little shine.</p>
+        <h1>Dice preview</h1>
         <div className="die-preview-table">
-          <span className="die-preview-table-label">THE DICE TABLE</span>
           <div className="die-preview-die">
             <RollingDie value={value} rolling={rolling} rollId={rollId} lightAngle={lightAngle} />
           </div>
           <div className="die-preview-result" aria-live="polite" aria-atomic="true">
-            {rolling ? "ROLLING…" : <>LANDED ON <strong>{value}</strong></>}
+            {rolling ? "Rolling…" : <>Landed on <strong>{value}</strong></>}
           </div>
         </div>
         <label className="die-preview-light">
-          <span>MOVE THE LIGHT <small>{lightAngle}°</small></span>
+          <span>Move the light <small>{lightAngle}°</small></span>
           <input type="range" min="-80" max="80" value={lightAngle} onChange={(event) => setLightAngle(Number(event.target.value))} aria-label="Light angle" />
-          <span className="die-preview-light-ends"><small>LEFT</small><small>RIGHT</small></span>
+          <span className="die-preview-light-ends"><small>Left</small><small>Right</small></span>
         </label>
         <button className="roll-button die-preview-roll" disabled={rolling} onClick={() => roll()}>
-          <span className="roll-icon" aria-hidden="true">↻</span>
-          {rolling ? "LET IT ROLL…" : "ROLL THE DIE"}
-          <span className="button-arrow" aria-hidden="true">→</span>
+          {rolling ? "Rolling…" : "Roll the die"}
         </button>
         <div className="die-preview-faces" aria-label="Preview each landing face">
-          <span>TRY A FACE</span>
+          <span>Try a face</span>
           {[1, 2, 3, 4, 5, 6].map((face) => (
             <button key={face} disabled={rolling} aria-label={`Roll and land on ${face}`} aria-pressed={!rolling && value === face} onClick={() => roll(face)}>{face}</button>
           ))}

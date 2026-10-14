@@ -13,7 +13,7 @@ export default function Icon() {
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 110,
-        background: "#173f42",
+        background: "#202020",
       }}
     >
       <div
@@ -23,23 +23,21 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          border: "18px solid #e3ad4e",
           borderRadius: 74,
-          background: "#ce684d",
-          transform: "rotate(-4deg)",
+          background: "#ffffff",
         }}
       >
         <div style={{ width: 176, height: 176, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#fff9ed" }} />
-            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#fff9ed" }} />
+            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#202020" }} />
+            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#202020" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#fff9ed" }} />
+            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#202020" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#fff9ed" }} />
-            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#fff9ed" }} />
+            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#202020" }} />
+            <span style={{ width: 46, height: 46, borderRadius: 23, background: "#202020" }} />
           </div>
         </div>
       </div>

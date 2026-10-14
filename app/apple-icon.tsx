@@ -13,7 +13,7 @@ export default function AppleIcon() {
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 38,
-        background: "#173f42",
+        background: "#202020",
       }}
     >
       <div
@@ -23,23 +23,21 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          border: "7px solid #e3ad4e",
           borderRadius: 27,
-          background: "#ce684d",
-          transform: "rotate(-4deg)",
+          background: "#ffffff",
         }}
       >
         <div style={{ width: 60, height: 60, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#fff9ed" }} />
-            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#fff9ed" }} />
+            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#202020" }} />
+            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#202020" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#fff9ed" }} />
+            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#202020" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#fff9ed" }} />
-            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#fff9ed" }} />
+            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#202020" }} />
+            <span style={{ width: 16, height: 16, borderRadius: 8, background: "#202020" }} />
           </div>
         </div>
       </div>

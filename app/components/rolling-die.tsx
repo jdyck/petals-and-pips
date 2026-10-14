@@ -50,7 +50,7 @@ function makeDie() {
     mask.anisotropy = 4;
     masks.push(mask);
     return new THREE.MeshPhysicalMaterial({
-      color: "#fff6e5", roughness: 0.32, metalness: 0,
+      color: "#ffffff", roughness: 0.32, metalness: 0,
       clearcoat: 0.35, clearcoatRoughness: 0.24,
       alphaMap: mask, alphaTest: 0.5,
     });
@@ -68,7 +68,7 @@ function makeDie() {
   const pipGeometry = new THREE.LatheGeometry(profile, 40);
   pipGeometry.rotateX(HALF_PI);
   const pipMaterial = new THREE.MeshStandardMaterial({
-    color: "#8d281d", roughness: 0.52, metalness: 0, side: THREE.DoubleSide,
+    color: "#202020", roughness: 0.52, metalness: 0, side: THREE.DoubleSide,
   });
   FACES.forEach((face, faceIndex) => {
     const faceGroup = new THREE.Group();
@@ -116,7 +116,7 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
   const host = useRef<HTMLSpanElement>(null);
   const current = useRef({ value, rolling, rollId, index, lightAngle });
   const update = useRef<(() => void) | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [useFlatDice, setUseFlatDice] = useState(false);
 
   useEffect(() => {
     current.current = { value, rolling, rollId, index, lightAngle };
@@ -125,11 +125,13 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
 
   useEffect(() => {
     const element = host.current!;
+    // Touch devices use the same 3D dice. Fall back only if WebGL cannot initialize.
+    setUseFlatDice(false);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     } catch {
-      setFailed(true);
+      setUseFlatDice(true);
       return;
     }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -159,7 +161,7 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
     pmrem.dispose();
     const die = makeDie();
     scene.add(die.model);
-    const key = new THREE.DirectionalLight("#fff0da", 3.2);
+    const key = new THREE.DirectionalLight("#ffffff", 3.2);
     key.castShadow = true;
     key.shadow.mapSize.set(512, 512);
     Object.assign(key.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2, near: 0.1, far: 15 });
@@ -167,11 +169,11 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
     key.shadow.bias = -0.0002;
     key.shadow.radius = 4;
     scene.add(key);
-    const fill = new THREE.DirectionalLight("#c9e4f0", 0.12);
+    const fill = new THREE.DirectionalLight("#ffffff", 0.12);
     fill.position.set(4, 2, -3);
-    scene.add(fill, new THREE.HemisphereLight("#fff7e5", "#345b59", 0.12));
+    scene.add(fill, new THREE.HemisphereLight("#ffffff", "#555555", 0.12));
     const floorGeometry = new THREE.PlaneGeometry(12, 12);
-    const floorMaterial = new THREE.ShadowMaterial({ color: "#041c20", opacity: 0.3 });
+    const floorMaterial = new THREE.ShadowMaterial({ color: "#000000", opacity: 0.3 });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -HALF_PI;
     floor.position.y = -0.5;
@@ -241,7 +243,7 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
     };
   }, []);
 
-  return <span ref={host} className="die-scene" aria-hidden="true">
-    {failed && <span className="die-webgl-fallback">{value}</span>}
+  return <span ref={host} className={`die-scene${useFlatDice ? " die-lightweight" : ""}${rolling ? " is-rolling" : ""}`} aria-hidden="true">
+    {useFlatDice && <span className="die-webgl-fallback">{Array.from({ length: 9 }, (_, pip) => <i key={pip} className={PIPS[value].includes(pip) ? "pip-on" : ""} />)}</span>}
   </span>;
 }
