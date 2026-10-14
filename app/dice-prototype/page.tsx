@@ -6,6 +6,7 @@ import { ROLL_DURATION, RollingDie } from "../components/rolling-die";
 
 export default function DicePrototype() {
   const [value, setValue] = useState(5);
+  const [lightAngle, setLightAngle] = useState(-35);
   const [rolling, setRolling] = useState(false);
   const [rollId, setRollId] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,16 +30,21 @@ export default function DicePrototype() {
       <section className="die-preview-card">
         <div className="eyebrow"><span className="eyebrow-line" /> A LITTLE LUCK IN MOTION</div>
         <h1>Give it a <em>roll.</em></h1>
-        <p>A tumble, a bounce, a little suspense.</p>
+        <p>Rounded edges. Recessed pips. A little shine.</p>
         <div className="die-preview-table">
           <span className="die-preview-table-label">THE DICE TABLE</span>
           <div className="die-preview-die">
-            <RollingDie value={value} rolling={rolling} rollId={rollId} />
+            <RollingDie value={value} rolling={rolling} rollId={rollId} lightAngle={lightAngle} />
           </div>
           <div className="die-preview-result" aria-live="polite" aria-atomic="true">
             {rolling ? "ROLLING…" : <>LANDED ON <strong>{value}</strong></>}
           </div>
         </div>
+        <label className="die-preview-light">
+          <span>MOVE THE LIGHT <small>{lightAngle}°</small></span>
+          <input type="range" min="-80" max="80" value={lightAngle} onChange={(event) => setLightAngle(Number(event.target.value))} aria-label="Light angle" />
+          <span className="die-preview-light-ends"><small>LEFT</small><small>RIGHT</small></span>
+        </label>
         <button className="roll-button die-preview-roll" disabled={rolling} onClick={() => roll()}>
           <span className="roll-icon" aria-hidden="true">↻</span>
           {rolling ? "LET IT ROLL…" : "ROLL THE DIE"}
