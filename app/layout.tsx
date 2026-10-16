@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Lora, Nunito_Sans } from "next/font/google";
+import { Cormorant_Garamond, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 
 const nunitoSans = Nunito_Sans({
@@ -9,11 +9,11 @@ const nunitoSans = Nunito_Sans({
   variable: "--font-nunito-sans",
 });
 
-const lora = Lora({
+const display = Cormorant_Garamond({
   subsets: ["latin"],
-  weight: ["500", "600"],
+  weight: ["400", "500", "600"],
   display: "swap",
-  variable: "--font-lora",
+  variable: "--font-cormorant",
 });
 
 export const metadata: Metadata = {
@@ -27,6 +27,8 @@ export const metadata: Metadata = {
     title: "Petals & Pips",
     statusBarStyle: "default",
   },
+  // Next.js emits the generic capable tag; iPadOS 15 also needs Apple's tag.
+  other: { "apple-mobile-web-app-capable": "yes" },
   icons: {
     icon: "/icon",
     apple: { url: "/apple-icon", sizes: "180x180", type: "image/png" },
@@ -37,12 +39,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f5f5f5",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${nunitoSans.variable} ${lora.variable}`}>
+    <html lang="en" className={`${nunitoSans.variable} ${display.variable}`}>
       <body>{children}</body>
     </html>
   );

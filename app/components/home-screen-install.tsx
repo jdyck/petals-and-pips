@@ -22,14 +22,22 @@ export default function HomeScreenInstall() {
     if (process.env.NODE_ENV === "production" && window.isSecureContext && "serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
         .then(async (registration) => {
-          // `ready` never rejects when installation fails, so watch the worker too.
-          const worker = registration.installing;
-          if (worker) {
-            worker.addEventListener("statechange", () => {
-              if (!cancelled && worker.state === "redundant" && !registration.active) setOfflineUnavailable(true);
+          // Wait for this installation, even if an older worker is already active.
+          const worker = registration.installing || registration.waiting || registration.active;
+          if (!worker) throw new Error("Offline setup did not start.");
+          if (worker.state !== "activated") {
+            await new Promise<void>((resolve, reject) => {
+              const checkState = () => {
+                if (worker.state === "activated" || worker.state === "redundant") {
+                  worker.removeEventListener("statechange", checkState);
+                  if (worker.state === "activated") resolve();
+                  else reject(new Error("Offline setup failed."));
+                }
+              };
+              worker.addEventListener("statechange", checkState);
+              checkState();
             });
           }
-          await navigator.serviceWorker.ready;
           if (!cancelled) setOfflineReady(true);
         })
         .catch(() => { if (!cancelled) setOfflineUnavailable(true); });

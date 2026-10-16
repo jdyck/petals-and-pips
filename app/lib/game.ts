@@ -17,7 +17,7 @@ export type Category = { id: CategoryId; label: string; hint: string; group: "up
 export type ScoreCard = Array<number | null>;
 
 export const CATEGORIES: Category[] = [
-  { id: "ones", label: "Aces", hint: "Count the ones", group: "upper", face: 1 },
+  { id: "ones", label: "Ones", hint: "Count the ones", group: "upper", face: 1 },
   { id: "twos", label: "Twos", hint: "Count the twos", group: "upper", face: 2 },
   { id: "threes", label: "Threes", hint: "Count the threes", group: "upper", face: 3 },
   { id: "fours", label: "Fours", hint: "Count the fours", group: "upper", face: 4 },
@@ -115,6 +115,47 @@ export function categoryAward(id: CategoryId, dice: number[], card: ScoreCard) {
   return { score, bonusPoints: earnsBonus ? 100 : 0 };
 }
 
+function upperBonusPlan(card: ScoreCard) {
+  const subtotal = upperSubtotal(card);
+  // Three of every face totals 63. Banked extras offset earlier shortfalls.
+  const onParTotal = DIE.reduce((sum, face) => sum + (card[face - 1] ?? 3 * face), 0);
+  const maximum = DIE.reduce((sum, face) => sum + (card[face - 1] ?? 5 * face), 0);
+  return { subtotal, shortfall: Math.max(0, 63 - onParTotal), chasing: subtotal < 63 && maximum >= 63 };
+}
+
+// Rank strategic value separately from the points actually written on the card.
+export function rankScoreOptions(dice: number[], card: ScoreCard) {
+  if (dice.length !== 5) return [];
+  const bonus = upperBonusPlan(card);
+  return playableCategoryIndices(card, dice).map((index) => {
+    const category = CATEGORIES[index];
+    const points = categoryAward(category.id, dice, card).score;
+    let priority = points > 0 ? 1 : 0;
+    if (points > 0) {
+      if (category.face && bonus.chasing) {
+        const par = 3 * category.face;
+        if (points >= par || bonus.subtotal + points >= 63) {
+          // Four (or five) matching dice can repair a missed three-of-a-face goal.
+          priority = bonus.shortfall > 0 && points > par ? 3 : 2;
+        }
+      } else if (category.id === "fullHouse") priority = 4;
+      else if (category.id === "smallStraight") priority = 5;
+      else if (category.id === "largeStraight") priority = 6;
+      else if (category.id === "fiveKind") priority = 7;
+    }
+    return { category, index, points, priority };
+  }).sort((a, b) => b.priority - a.priority || b.points - a.points || a.index - b.index);
+}
+
+export function selectScoreSuggestions(options: ReturnType<typeof rankScoreOptions>) {
+  const chance = options.find((option) => option.category.id === "chance");
+  const alternatives = options.filter((option) => option.category.id !== "chance").slice(0, 2);
+  if (!chance) return options.slice(0, 3);
+  if (alternatives.every((option) => option.points === 0)) return [chance, ...alternatives];
+  // Reserve the third slot even if only one other scoring category remains.
+  return [alternatives[0], alternatives[1], chance];
+}
+
 function longestRun(dice: number[]) {
   const values = [...new Set(dice)].sort((a, b) => a - b);
   let best = 0;
@@ -129,6 +170,9 @@ function longestRun(dice: number[]) {
 }
 
 export function aiTarget(dice: number[], card: ScoreCard): CategoryId {
+  const bestMade = rankScoreOptions(dice, card)[0];
+  if (bestMade && bestMade.priority >= 2) return bestMade.category.id;
+
   const counts = countFaces(dice);
   const maxCount = Math.max(...counts);
   const sum = dice.reduce((total, die) => total + die, 0);
@@ -149,6 +193,19 @@ export function aiTarget(dice: number[], card: ScoreCard): CategoryId {
     fiveKind: maxCount === 5 ? 60 : maxCount === 4 ? 39 : maxCount === 3 ? 22 : maxCount === 2 ? 10 : 2,
     chance: sum,
   };
+
+  const bonus = upperBonusPlan(card);
+  if (bonus.chasing) {
+    CATEGORIES.forEach((category) => {
+      if (!category.face || card[category.face - 1] !== null) return;
+      const count = counts[category.face - 1];
+      const target = Math.min(5, 3 + Math.ceil(bonus.shortfall / category.face));
+      const expectedMatches = count + (5 - count) * 0.4;
+      // When behind par, favor matching higher faces that can cover more debt.
+      potential[category.id] += 12 * Math.min(1, expectedMatches / target)
+        + Math.min(bonus.shortfall, Math.max(0, expectedMatches - 3) * category.face);
+    });
+  }
 
   let target: CategoryId = "chance";
   let best = -Infinity;
@@ -183,6 +240,7 @@ export function aiHoldPlan(dice: number[], target: CategoryId) {
     return dice.map((die, index) => bestFaces.includes(die) && dice.indexOf(die) === index);
   }
   if (target === "fullHouse") {
+    if (counts.includes(3) && counts.includes(2)) return dice.map(() => true);
     const pairs = counts.map((count, index) => ({ count, face: index + 1 })).filter((item) => item.count === 2);
     const triples = counts.map((count, index) => ({ count, face: index + 1 })).filter((item) => item.count === 3);
     const preferred = pairs.length >= 2 ? pairs.map((item) => item.face) : triples.length ? [triples[0].face] : maxCount >= 2 ? [maxFace] : [];
@@ -193,26 +251,18 @@ export function aiHoldPlan(dice: number[], target: CategoryId) {
 }
 
 export function chooseAiCategory(dice: number[], card: ScoreCard) {
-  let bestIndex = -1;
-  let bestScore = -1;
+  const best = rankScoreOptions(dice, card)[0];
+  if (best && best.points > 0) return best.index;
   const playable = playableCategoryIndices(card, dice);
-  CATEGORIES.forEach((category, index) => {
-    if (!playable.includes(index)) return;
-    const score = categoryAward(category.id, dice, card).score;
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = index;
-    }
-  });
-  if (bestScore > 0) return bestIndex;
 
   const sacrificeOrder: CategoryId[] = ["fiveKind", "largeStraight", "fourKind", "fullHouse", "smallStraight", "threeKind", "ones", "twos", "threes", "fours", "fives", "sixes", "chance"];
   const sacrifice = sacrificeOrder.find((id) => playable.includes(CATEGORIES.findIndex((category) => category.id === id)));
   return CATEGORIES.findIndex((category) => category.id === sacrifice);
 }
 
-export type GameMode = "computer" | "local2" | "local3" | "local4";
+export type GameMode = "solo" | "computer" | "local2" | "local3" | "local4";
 export type Participant = { name: string; computer: boolean; scores: ScoreCard; bonus: number };
+export type FiveKindCelebration = { playerName: string; dice: number[]; categoryLabel: string | null; score: number; bonusPoints: number };
 export type GameState = {
   mode: GameMode;
   players: Participant[];
@@ -224,6 +274,8 @@ export type GameState = {
   rolling: boolean;
   rollId: number;
   status: string;
+  celebration: FiveKindCelebration | null;
+  jokerChoice: boolean;
 };
 export type GameAction =
   | { type: "reset"; mode: GameMode }
@@ -231,11 +283,12 @@ export type GameAction =
   | { type: "roll"; dice: number[] }
   | { type: "computerRoll"; dice: number[]; held: boolean[] }
   | { type: "settle" }
+  | { type: "dismissCelebration" }
   | { type: "hold"; index: number }
   | { type: "score"; index: number };
 
 export function createGame(mode: GameMode): GameState {
-  const count = mode === "local4" ? 4 : mode === "local3" ? 3 : 2;
+  const count = mode === "solo" ? 1 : mode === "local4" ? 4 : mode === "local3" ? 3 : 2;
   return {
     mode,
     players: Array.from({ length: count }, (_, index) => ({
@@ -252,11 +305,14 @@ export function createGame(mode: GameMode): GameState {
     rolling: false,
     rollId: 0,
     status: "Player 1: roll the dice to start your turn.",
+    celebration: null,
+    jokerChoice: false,
   };
 }
 
 export function matchResult(players: Participant[]) {
   const totals = players.map((player) => totalScore(player.scores, player.bonus));
+  if (players.length === 1) return `You scored ${totals[0]} points.`;
   const best = Math.max(...totals);
   const winners = players.filter((_, index) => totals[index] === best).map((player) => player.name);
   return winners.length === 1 ? `${winners[0]} wins with ${best} points.` : `${winners.join(" and ")} tie with ${best} points.`;
@@ -264,6 +320,8 @@ export function matchResult(players: Participant[]) {
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (action.type === "reset") return createGame(action.mode);
+  if (action.type === "dismissCelebration") return state.celebration ? { ...state, celebration: null } : state;
+  if (state.celebration) return state;
   const player = state.players[state.currentPlayer];
   const humanTurn = state.phase === "ready" || state.phase === "playing";
   switch (action.type) {
@@ -287,12 +345,29 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case "settle": {
       if (!state.rolling) return state;
-      const bonus = categoryAward("chance", state.dice, player.scores).bonusPoints;
-      const matchingUpper = CATEGORIES[state.dice[0] - 1];
-      const bonusStatus = player.scores[state.dice[0] - 1] === null
-        ? `Another five of a kind! Score in ${matchingUpper.label} to collect +100 bonus points.`
-        : "Another five of a kind! Choose an unlocked category to collect +100 bonus points.";
-      return { ...state, rolling: false, status: bonus ? bonusStatus : state.phase === "computer" ? "Player 2 is choosing a score…" : state.rollsLeft === 0 ? "Choose a score on the card." : "Tap dice to hold them, then roll again or choose a score." };
+      const settled = { ...state, rolling: false };
+      const fiveKindIndex = CATEGORIES.findIndex((category) => category.id === "fiveKind");
+      if (hasFiveKind(state.dice) && player.scores[fiveKindIndex] !== 0) {
+        const chooseLower = !player.computer && player.scores[fiveKindIndex] === 50
+          && player.scores[state.dice[0] - 1] !== null
+          && playableCategoryIndices(player.scores, state.dice).some((index) => CATEGORIES[index].group === "lower");
+        if (chooseLower) {
+          return {
+            ...settled,
+            players: state.players.map((item, index) => index === state.currentPlayer ? { ...item, bonus: item.bonus + 100 } : item),
+            rollsLeft: 0,
+            jokerChoice: true,
+            status: "Five of a kind bonus: +100 added! Choose an open lower category for your joker score.",
+            celebration: { playerName: player.name, dice: [...state.dice], categoryLabel: null, score: 0, bonusPoints: 100 },
+          };
+        }
+        const index = player.scores[fiveKindIndex] === null ? fiveKindIndex : chooseAiCategory(state.dice, player.scores);
+        const category = CATEGORIES[index];
+        const award = categoryAward(category.id, state.dice, player.scores);
+        const scored = gameReducer(settled, { type: "score", index });
+        return { ...scored, celebration: { playerName: player.name, dice: [...state.dice], categoryLabel: category.label, ...award } };
+      }
+      return { ...settled, status: state.phase === "computer" ? "Player 2 is choosing a score…" : state.rollsLeft === 0 ? "Choose a score on the card." : "Tap dice to hold them, then roll again or choose a score." };
     }
     case "hold":
       if (state.phase !== "playing" || state.rolling || state.rollsLeft === 0) return state;
@@ -304,21 +379,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const players = state.players.map((item, index) => index === state.currentPlayer ? {
         ...item,
         scores: item.scores.map((score, categoryIndex) => categoryIndex === action.index ? award.score : score),
-        bonus: item.bonus + award.bonusPoints,
+        bonus: item.bonus + (state.jokerChoice ? 0 : award.bonusPoints),
       } : item);
       const finished = players.every((item) => item.scores.every((score) => score !== null));
       const currentPlayer = finished ? state.currentPlayer : (state.currentPlayer + 1) % players.length;
       const next = players[currentPlayer];
+      const needsHandoff = players.length > 1 && state.mode !== "computer";
       return {
         ...state,
         players,
         currentPlayer,
-        phase: finished ? "finished" : next.computer ? "computer" : state.mode === "computer" ? "ready" : "handoff",
+        phase: finished ? "finished" : next.computer ? "computer" : needsHandoff ? "handoff" : "ready",
         dice: [],
         held: Array(5).fill(false),
         rollsLeft: 3,
         rolling: false,
-        status: finished ? matchResult(players) : `${player.name} scored ${award.score} in ${category.label}.${award.bonusPoints ? " Five of a kind bonus: +100." : ""} ${next.computer ? "Player 2 is up next." : state.mode === "computer" ? "Player 1: roll to start your turn." : `Pass the device to ${next.name}.`}`,
+        jokerChoice: false,
+        status: finished ? matchResult(players) : `${player.name} scored ${award.score} in ${category.label}.${award.bonusPoints ? " Five of a kind bonus: +100." : ""} ${next.computer ? "Player 2 is up next." : needsHandoff ? `Pass the device to ${next.name}.` : `${next.name}: roll to start your turn.`}`,
       };
     }
   }

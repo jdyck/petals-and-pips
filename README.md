@@ -1,6 +1,6 @@
 # Petals & Pips
 
-A five-dice game built with the Next.js App Router. Play thirteen scoring categories against Player 2, the computer opponent, or share the device with two to four local players.
+A five-dice game built with the Next.js App Router. Play thirteen scoring categories on your own, against Player 2, the computer opponent, or share the device with two to four local players.
 
 ## Run locally
 
@@ -9,13 +9,21 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000> to play against the computer. Use **New game** to choose a computer opponent or two, three, or four local players. Open <http://localhost:3000/pass-and-play> to start a four-player local game directly. Local turns pause until the next player taps **Ready**. Use **How to play** in the header for the turn rules and scoring overview.
+Open <http://localhost:3000> to play solo. Use **New game** to choose **1 player · no opponent**, a computer opponent, or two, three, or four local players. Solo turns continue immediately after scoring, and the game shows your final score after all thirteen categories are filled. Open <http://localhost:3000/pass-and-play> to start a four-player local game directly. Multiplayer local turns pause until the next player taps **Ready**. Use **How to play** in the header for the turn rules and scoring overview.
 
-Score 50 in **Five of a kind** to unlock repeat bonuses. Each additional five of a kind earns +100 when you score the turn in an open category, and bonuses keep accumulating. Use the matching upper category if it is open; otherwise choose an open lower category with joker scoring, or any open upper category if the lower section is full. The bonus row shows the accumulated points and a **+100 ready** preview for a qualifying roll.
+Scoring suggestions and the computer favor three matching dice in Ones through Sixes over Three of a kind, Four of a kind, and Chance while the 63-point bonus is still reachable. Extra matches help recover earlier shortfalls; earlier extras also count toward the target. A completed Full house ranks above a top-section triple, and the computer keeps the full hand. Bonus chasing ends once the bonus is earned or is no longer reachable. Chance stays in the third suggestion slot while available, moving to the first slot when the other choices all score zero.
 
-Open <http://localhost:3000/dice-prototype> for the enlarged 3D die preview. Roll a random result or use the six face buttons to inspect each landing. The Three.js model has rounded edges, concave pip meshes, an ivory physical material, environment reflections, and real lighting and cast shadows. Move the light slider to inspect the curved edges. The same model and rolling animation run in the game; held dice stay still on rerolls. Reduced-motion preferences skip the animation.
+Your first **Five of a kind** automatically scores 50 and ends the turn. Each additional five of a kind automatically adds +100, and bonuses keep accumulating. The game also scores the matching upper category if it is open. If that box is filled, tap **Choose a category** on the celebration, then choose an open lower category on the scorecard using joker scoring (Full house: 25, Small straight: 30, Large straight: 40; other lower categories: dice total). The bonus is already added, and you cannot reroll while choosing. If the lower section is full, the game automatically fills an open upper category. The computer chooses its own category. Scoring zero in Five of a kind disables repeat bonuses.
 
-On tablet screens, the dice and scorecard sit side by side. The scorecard scrolls independently with pinned totals. Both touch and desktop devices use the animated 3D dice; flat pip dice appear only if WebGL cannot initialize.
+In development (`npm run dev`), use **Dev mode → Roll five of a kind** below the dice controls to test the automatic score and celebration. It releases held dice and rolls five matching faces using the normal animation. The button is unavailable during computer turns, handoffs, and rolls, and is omitted from production builds.
+
+Open <http://localhost:3000/dice-prototype> for the enlarged 3D die preview. Roll a random result or use the six face buttons to inspect each landing. The Three.js model has rounded edges, concave pip meshes, a white physical material, environment reflections, and real lighting. The dice sit on a darker gray tray without cast shadows. Move the light slider to inspect the curved edges. Use **Dice appearance** to compare **Original 3D** and **Lighter 3D**. Adjust **Frame rate limit** from 10 to 60 FPS (starting at 30) to compare smoothness and rendering load, including during a roll. This is a cap, so slower devices may render fewer frames; the roll duration and landing stay the same. The cap applies only to the prototype. The same models and rolling animation run in the game; held dice stay still on rerolls. Reduced-motion preferences skip the animation.
+
+The game fits a 1024×768 frame: a watercolor iris dice tray on the left, the scorecard on the right, and three live scoring suggestions below the dice. Tap a suggestion or use **Choose another score** to see every open category. The scorecard shows only committed scores; open categories stay as dashes until selected. The active player’s column stays highlighted. Smaller screens stack the tray and scorecard. Modern devices keep the original WebGL 2 dice. iOS/Safari 15 and older use a separate WebGL 1 renderer with the same shape, recessed pip meshes, material, lighting, and animation, but fewer polygons, smaller textures, a lower pixel ratio, and one combined pip mesh to reduce draw calls. Touch input alone does not reduce quality. If the original renderer fails or loses its context, the game switches to the lighter renderer; if WebGL is unavailable, six CSS faces still roll in 3D perspective. All renderers are included in the cached game bundle for offline play.
+
+Safari/iPadOS 15.4 is the configured build target. Rendering and compatibility checks on a modern browser do not replace performance testing on a physical iPad Air 2.
+
+The WebGL 1 renderer imports r162 source modules through `app/lib/three-legacy/index.mjs` to keep its engine private alongside modern Three.js. Its two MIT-licensed addons are copied from r162 with imports pointing to that same private engine; keep them aligned with `three-legacy` when updating it.
 
 ## Install on an iPad Air 2
 
@@ -35,4 +43,4 @@ Use an HTTPS host or HTTPS reverse proxy in front of the server. Opening an HTTP
 3. Tap Safari's **Share** button → **Add to Home Screen** → **Add**.
 4. Open **Petals & Pips** from the Home Screen once while online, then it can launch and play offline.
 
-The installed app opens without Safari's toolbar, with a dice icon. Computer games and two-to-four-player games work offline after setup; the separate 3D dice prototype is not precached. Scores last for the current session and reset if the app reloads. Before deploying a new build, bump `CACHE_NAME` in `public/sw.js` so installed apps download the new complete offline shell.
+The installed app opens without Safari's toolbar, with a dice icon. Solo, computer, and two-to-four-player games work offline after setup; the separate 3D dice prototype is not precached. Scores last for the current session and reset if the app reloads. Before deploying a new build, bump `CACHE_NAME` in `public/sw.js` so installed apps download the new complete offline shell.
