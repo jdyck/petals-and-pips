@@ -2,14 +2,14 @@ import type { DiceShading } from "./dice-shading";
 
 export const ROLL_DURATION = 1250;
 export const DIE_RADIUS = 0.13;
-export const DIE_COLOR = "#fff9f0";
+export const DIE_COLOR = "#ffffff";
 export const DIE_LIGHT_ANGLE = -48;
 
-// Preview adjustments relative to the game's current ivory material.
+// Preview adjustments relative to the game's white material.
 export function diceWhiteBalance(temperature: number, tint = 0) {
   const warmth = Math.max(-100, Math.min(100, temperature)) / 100;
   const tintAmount = Math.max(-100, Math.min(100, tint)) / 100;
-  const base = [255, 249, 240];
+  const base = [255, 255, 255];
   const target = warmth < 0 ? [199, 224, 255] : [255, 218, 176];
   return "#" + base.map((channel, index) => {
     const balanced = channel + (target[index] - channel) * Math.abs(warmth);
@@ -20,6 +20,18 @@ export function diceWhiteBalance(temperature: number, tint = 0) {
   }).join("");
 }
 export const PIP_COLOR = "#111111";
+
+export function dicePipColor(surfaceColor: string) {
+  const linear = [1, 3, 5].map((offset) => {
+    const channel = parseInt(surfaceColor.slice(offset, offset + 2), 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  // Choose the stronger contrast against near-black or white pips.
+  const darkContrast = (luminance + 0.05) / (0.005605 + 0.05);
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  return whiteContrast > darkContrast ? "#ffffff" : PIP_COLOR;
+}
 export const PIP_RADIUS = 0.081;
 export const DIE_UV_SCALE = 1 - 2 * DIE_RADIUS + Math.PI * DIE_RADIUS / 2;
 export const HALF_PI = Math.PI / 2;
@@ -64,7 +76,7 @@ export const LANDING_POSES: Record<number, [number, number]> = {
 };
 
 export type DieState = { value: number; rolling: boolean; rollId: number; index: number; lightAngle: number; turnDegrees?: number; tiltDegrees?: number; dieColor?: string; brightness?: number; shading?: DiceShading; unrolled?: boolean };
-export type DiePose = { rotation: [number, number, number]; position: [number, number, number]; light: [number, number, number]; progress: number; turnDegrees: number; tiltDegrees?: number; dieColor: string; brightness: number; shading?: DiceShading; unrolled?: boolean };
+export type DiePose = { rotation: [number, number, number]; position: [number, number, number]; light: [number, number, number]; progress: number; turnDegrees: number; tiltDegrees?: number; dieColor: string; pipColor: string; brightness: number; shading?: DiceShading; unrolled?: boolean };
 export type DiceRenderer = {
   element: HTMLElement;
   kind: "full" | "compatible" | "css";
@@ -112,6 +124,7 @@ export function diePose(state: DieState, elapsed: number, reducedMotion: boolean
     turnDegrees: state.turnDegrees ?? DIE_SIDEWAYS_DEGREES,
     tiltDegrees: state.tiltDegrees ?? DIE_TILT_DEGREES,
     dieColor: state.dieColor ?? DIE_COLOR,
+    pipColor: dicePipColor(state.shading?.surfaceColor ?? (state.shading ? "#ffffff" : state.dieColor ?? DIE_COLOR)),
     brightness: state.brightness ?? 1,
     shading: state.shading,
     unrolled: state.unrolled,

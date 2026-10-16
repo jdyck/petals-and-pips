@@ -1,0 +1,182 @@
+[
+  {
+    "id": "01-pink-wild-rose",
+    "name": "Pink wild rose",
+    "background": "/bgs/01-pink-wild-rose.webp",
+    "accent": "#92536b"
+  },
+  {
+    "id": "02-blue-brush-blooms",
+    "name": "Blue brush blooms",
+    "background": "/bgs/02-blue-brush-blooms.webp",
+    "accent": "#406f88"
+  },
+  {
+    "id": "03-white-frangipani",
+    "name": "White frangipani",
+    "background": "/bgs/03-white-frangipani.webp",
+    "accent": "#627047"
+  },
+  {
+    "id": "04-single-blush-cosmos",
+    "name": "Single blush cosmos",
+    "background": "/bgs/04-single-blush-cosmos.webp",
+    "accent": "#975770"
+  },
+  {
+    "id": "05-blue-poppy",
+    "name": "Blue poppy",
+    "background": "/bgs/05-blue-poppy.webp",
+    "accent": "#4b6c99"
+  },
+  {
+    "id": "06-coral-rose",
+    "name": "Coral rose",
+    "background": "/bgs/06-coral-rose.webp",
+    "accent": "#9b5b55"
+  },
+  {
+    "id": "07-white-garden-bloom",
+    "name": "White garden bloom",
+    "background": "/bgs/07-white-garden-bloom.webp",
+    "accent": "#6c704d"
+  },
+  {
+    "id": "08-lilac-bells",
+    "name": "Lilac bells",
+    "background": "/bgs/08-lilac-bells.webp",
+    "accent": "#806093"
+  },
+  {
+    "id": "09-peach-poppies",
+    "name": "Peach poppies",
+    "background": "/bgs/09-peach-poppies.webp",
+    "accent": "#9b6249"
+  },
+  {
+    "id": "10-buttercup",
+    "name": "Buttercup",
+    "background": "/bgs/10-buttercup.webp",
+    "accent": "#79672d"
+  },
+  {
+    "id": "11-pink-apple-blossom",
+    "name": "Pink apple blossom",
+    "background": "/bgs/11-pink-apple-blossom.webp",
+    "accent": "#96576d"
+  },
+  {
+    "id": "12-dusty-mauve",
+    "name": "Dusty mauve",
+    "background": "/bgs/12-dusty-mauve.webp",
+    "accent": "#805d76"
+  },
+  {
+    "id": "13-sky-blue-cups",
+    "name": "Sky blue cups",
+    "background": "/bgs/13-sky-blue-cups.webp",
+    "accent": "#477796"
+  },
+  {
+    "id": "14-cream-camellia",
+    "name": "Cream camellia",
+    "background": "/bgs/14-cream-camellia.webp",
+    "accent": "#8f684f"
+  },
+  {
+    "id": "15-soft-red-poppy",
+    "name": "Soft red poppy",
+    "background": "/bgs/15-soft-red-poppy.webp",
+    "accent": "#a0544c"
+  },
+  {
+    "id": "16-violet-wildflower",
+    "name": "Violet wildflower",
+    "background": "/bgs/16-violet-wildflower.webp",
+    "accent": "#755b96"
+  },
+  {
+    "id": "17-blush-pair",
+    "name": "Blush pair",
+    "background": "/bgs/17-blush-pair.webp",
+    "accent": "#9b526d"
+  },
+  {
+    "id": "18-forget-me-not-sprig",
+    "name": "Forget-me-not sprig",
+    "background": "/bgs/18-forget-me-not-sprig.webp",
+    "accent": "#527999"
+  },
+  {
+    "id": "19-lemon-cosmos",
+    "name": "Lemon cosmos",
+    "background": "/bgs/19-lemon-cosmos.webp",
+    "accent": "#7e6b30"
+  },
+  {
+    "id": "20-lavender-poppy",
+    "name": "Lavender poppy",
+    "background": "/bgs/20-lavender-poppy.webp",
+    "accent": "#7a5c98"
+  },
+  {
+    "id": "21-coral-blossom-branch",
+    "name": "Coral blossom branch",
+    "background": "/bgs/21-coral-blossom-branch.webp",
+    "accent": "#9c5c51"
+  },
+  {
+    "id": "22-blue-and-white",
+    "name": "Blue and white",
+    "background": "/bgs/22-blue-and-white.webp",
+    "accent": "#4f7591"
+  },
+  {
+    "id": "23-pink-sweet-pea",
+    "name": "Pink sweet pea",
+    "background": "/bgs/23-pink-sweet-pea.webp",
+    "accent": "#995273"
+  },
+  {
+    "id": "24-white-and-sage",
+    "name": "White and sage",
+    "background": "/bgs/24-white-and-sage.webp",
+    "accent": "#5c7356"
+  },
+  {
+    "id": "25-turquoise-meadow",
+    "name": "Turquoise meadow",
+    "background": "/bgs/25-turquoise-meadow.webp",
+    "accent": "#377c82"
+  },
+  {
+    "id": "26-apricot-single",
+    "name": "Apricot single",
+    "background": "/bgs/26-apricot-single.webp",
+    "accent": "#9e6247"
+  },
+  {
+    "id": "27-plum-and-blush",
+    "name": "Plum and blush",
+    "background": "/bgs/27-plum-and-blush.webp",
+    "accent": "#85455f"
+  },
+  {
+    "id": "28-pale-peach-rose",
+    "name": "Pale peach rose",
+    "background": "/bgs/28-pale-peach-rose.webp",
+    "accent": "#9b654f"
+  },
+  {
+    "id": "29-tiny-spring-flowers",
+    "name": "Tiny spring flowers",
+    "background": "/bgs/29-tiny-spring-flowers.webp",
+    "accent": "#975c72"
+  },
+  {
+    "id": "30-yellow-frangipani-mist",
+    "name": "Yellow frangipani mist",
+    "background": "/bgs/30-yellow-frangipani-mist.webp",
+    "accent": "#6b7548"
+  }
+]

@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { diePose, DIE_SIDEWAYS_DEGREES, DIE_TILT_DEGREES, DIE_COLOR, DIE_LIGHT_ANGLE } from "../lib/dice";
+import { diePose, dicePipColor, DIE_SIDEWAYS_DEGREES, DIE_TILT_DEGREES, DIE_COLOR, DIE_LIGHT_ANGLE } from "../lib/dice";
 import { initializeDiceRenderer } from "../lib/dice-renderer";
 import type { DiceQuality, DiceRenderer } from "../lib/dice";
 import type { DiceShading } from "../lib/dice-shading";
 
 export { ROLL_DURATION } from "../lib/dice";
 
-export function RollingDie({ value, rolling = false, rollId = 0, index = 0, lightAngle = DIE_LIGHT_ANGLE, turnDegrees = DIE_SIDEWAYS_DEGREES, tiltDegrees = DIE_TILT_DEGREES, quality = "auto", animateWithReducedMotion = false, fpsLimit = 0, dieColor = DIE_COLOR, brightness = 1, shading, unrolled = false }: {
+export function RollingDie({ value, rolling = false, rollId = 0, index = 0, lightAngle = DIE_LIGHT_ANGLE, turnDegrees = DIE_SIDEWAYS_DEGREES, tiltDegrees = DIE_TILT_DEGREES, quality = "auto", animateWithReducedMotion = false, fpsLimit = 0, dieColor = DIE_COLOR, brightness = 1, shading, unrolled = false, onReadyChange }: {
   value: number;
   rolling?: boolean;
   rollId?: number;
@@ -24,10 +24,13 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
   brightness?: number;
   shading?: DiceShading;
   unrolled?: boolean;
+  onReadyChange?: (ready: boolean) => void;
 }) {
   const host = useRef<HTMLSpanElement>(null);
   const current = useRef({ value, rolling, rollId, index, lightAngle, turnDegrees, tiltDegrees, animateWithReducedMotion, fpsLimit, dieColor, brightness, shading, unrolled });
   const update = useRef<(() => void) | null>(null);
+  const readiness = useRef(onReadyChange);
+  readiness.current = onReadyChange;
 
   useEffect(() => {
     current.current = { value, rolling, rollId, index, lightAngle, turnDegrees, tiltDegrees, animateWithReducedMotion, fpsLimit, dieColor, brightness, shading, unrolled };
@@ -54,6 +57,8 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
         activeRoll = state.rollId;
       }
       wasRolling = state.rolling;
+      // Keep the roll clock, but stop submitting GPU work in background tabs.
+      if (document.hidden) return;
       const pose = diePose(state, now - started, reducedMotion.matches && !state.animateWithReducedMotion);
       const interval = Number.isFinite(state.fpsLimit) && state.fpsLimit > 0 ? 1000 / state.fpsLimit : 0;
       // Skip drawing between capped frames, but always show updates and the landing.
@@ -76,7 +81,9 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
     }
 
     function releaseRenderer() {
+      delete element.dataset.ready;
       if (!renderer) return;
+      readiness.current?.(false);
       const previous = renderer;
       renderer = null;
       previous.element.removeEventListener("webglcontextlost", onContextLost);
@@ -89,12 +96,17 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
         const { width, height } = element.getBoundingClientRect();
         next.resize(width || 52, height || 82);
         const state = current.current;
-        next.render(diePose(state, performance.now() - started, reducedMotion.matches && !state.animateWithReducedMotion));
+        const pose = diePose(state, performance.now() - started, reducedMotion.matches && !state.animateWithReducedMotion);
+        // Warm pip meshes and the shell's alpha-map shader before the first roll.
+        if (state.unrolled) next.render({ ...pose, unrolled: false });
+        next.render(pose);
       });
       element.dataset.renderer = renderer.kind;
       element.appendChild(renderer.element);
       renderer.element.addEventListener("webglcontextlost", onContextLost);
       render();
+      element.dataset.ready = "true";
+      readiness.current?.(true);
     }
 
     function onContextLost(event: Event) {
@@ -110,6 +122,7 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
     const observer = new ResizeObserver(resize);
     observer.observe(element);
     reducedMotion.addEventListener("change", onMotionChange);
+    document.addEventListener("visibilitychange", onMotionChange);
     initialize(quality);
     return () => {
       disposed = true;
@@ -117,12 +130,13 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
       cancelAnimationFrame(frame);
       observer.disconnect();
       reducedMotion.removeEventListener("change", onMotionChange);
+      document.removeEventListener("visibilitychange", onMotionChange);
       releaseRenderer();
     };
   }, [quality]);
 
   return <span ref={host} className={`die-scene${rolling ? " is-rolling" : ""}${unrolled ? " is-unrolled" : ""}`} data-animate-with-reduced-motion={animateWithReducedMotion} aria-hidden="true">
     <span className="die-roll-placeholder">?</span>
-    {unrolled && <span className="die-unrolled-mark">?</span>}
+    {unrolled && <span className="die-unrolled-mark" style={shading?.surfaceColor ? { color: dicePipColor(shading.surfaceColor) } : undefined}>?</span>}
   </span>;
 }

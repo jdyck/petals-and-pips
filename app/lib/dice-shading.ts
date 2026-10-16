@@ -2,13 +2,15 @@ export type DiceShading = {
   topWhite: number;
   shadowDarkness: number;
   shadowTint: string;
+  surfaceColor?: string;
 };
 
-export const DEFAULT_DICE_SHADING: DiceShading = {
+export const DEFAULT_DICE_SHADING = {
   topWhite: 1,
-  shadowDarkness: 0.28,
-  shadowTint: "#f0b7c3",
-};
+  shadowDarkness: 0.25,
+  shadowTint: "#dbe4f2",
+  surfaceColor: "#ffffff",
+} satisfies DiceShading;
 
 function rgb(hex: string) {
   return [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255);
@@ -19,18 +21,20 @@ export function diceSurfaceColor(style: DiceShading, upward: number, lighting: n
   const t = Math.max(0, Math.min(1, upward / 0.95));
   const top = t * t * (3 - 2 * t);
   const detail = (0.82 + 0.18 * Math.max(0, Math.min(1, lighting))) * (1 - top) + top;
-  return "#" + rgb(style.shadowTint).map((channel) => {
+  const surface = style.surfaceColor ? rgb(style.surfaceColor) : [1, 1, 1];
+  return "#" + rgb(style.shadowTint).map((channel, index) => {
     const shadow = channel * (1 - style.shadowDarkness);
-    return Math.round(Math.max(0, Math.min(1, (shadow * (1 - top) + style.topWhite * top) * detail)) * 255).toString(16).padStart(2, "0");
+    return Math.round(Math.max(0, Math.min(1, (shadow * (1 - top) + surface[index] * style.topWhite * top) * detail)) * 255).toString(16).padStart(2, "0");
   }).join("");
 }
 
 // Recolor the shell by its world-facing normal after tone mapping. Pips keep
-// their physical material, and the top stays white when any rolled face lands.
+// their physical material; the top uses the selected surface color or white.
 export function createDiceShading() {
   const uniforms = {
     diceStyled: { value: false },
     diceTopWhite: { value: DEFAULT_DICE_SHADING.topWhite },
+    diceSurfaceColor: { value: [1, 1, 1] },
     diceShadowDarkness: { value: DEFAULT_DICE_SHADING.shadowDarkness },
     diceShadowTint: { value: rgb(DEFAULT_DICE_SHADING.shadowTint) },
   };
@@ -39,6 +43,7 @@ export function createDiceShading() {
       uniforms.diceStyled.value = !!style;
       if (!style) return;
       uniforms.diceTopWhite.value = style.topWhite;
+      uniforms.diceSurfaceColor.value = style.surfaceColor ? rgb(style.surfaceColor) : [1, 1, 1];
       uniforms.diceShadowDarkness.value = style.shadowDarkness;
       uniforms.diceShadowTint.value = rgb(style.shadowTint);
     },
@@ -47,6 +52,7 @@ export function createDiceShading() {
       shader.fragmentShader = `
         uniform bool diceStyled;
         uniform float diceTopWhite;
+        uniform vec3 diceSurfaceColor;
         uniform float diceShadowDarkness;
         uniform vec3 diceShadowTint;
       ` + shader.fragmentShader;
@@ -58,7 +64,7 @@ export function createDiceShading() {
           float diceLuma = clamp(dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
           float diceDetail = mix(0.82 + 0.18 * diceLuma, 1.0, diceTop);
           vec3 diceShadow = diceShadowTint * (1.0 - diceShadowDarkness);
-          gl_FragColor.rgb = mix(diceShadow, vec3(diceTopWhite), diceTop) * diceDetail;
+          gl_FragColor.rgb = mix(diceShadow, diceSurfaceColor * diceTopWhite, diceTop) * diceDetail;
         }
       `);
     },

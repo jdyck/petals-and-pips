@@ -6,6 +6,7 @@ const { test } = require("node:test");
 
 const origin = "https://game.example";
 const source = fs.readFileSync(path.join(__dirname, "../public/sw.js"), "utf8");
+const themes = require("../public/bgs/themes.json");
 
 function worker({ failAsset, offline = false } = {}) {
   const listeners = {};
@@ -36,6 +37,7 @@ function worker({ failAsset, offline = false } = {}) {
     const pathname = new URL(key(request)).pathname;
     fetched.push(pathname);
     if (pathname === failAsset) return new Response("Missing", { status: 404 });
+    if (pathname === "/bgs/themes.json") return Response.json(themes);
     if (pathname === "/" || pathname === "/pass-and-play") {
       return new Response(`<link href="/_next/static/chunks/game.css" rel="stylesheet"><script src="/_next/static/chunks/game.js"></script><main>${pathname}</main>`);
     }
@@ -67,11 +69,22 @@ test("offline setup includes both games, JavaScript, CSS, fonts and Home Screen 
   }
 });
 
-test("a missing script or font prevents activation of an incomplete offline app", async () => {
-  for (const failAsset of ["/_next/static/chunks/game.js", "/_next/static/media/game.woff2"]) {
+test("a missing script, font or theme prevents activation of an incomplete offline app", async () => {
+  for (const failAsset of ["/_next/static/chunks/game.js", "/_next/static/media/game.woff2", "/bgs/themes.json", themes[0].background]) {
     const app = worker({ failAsset });
     await assert.rejects(app.dispatch("install"), /Unable to cache/);
     assert.equal(app.skipped, false);
+  }
+});
+
+test("every randomly selected background is available for a new game offline", async () => {
+  const app = worker();
+  await app.dispatch("install");
+  app.setOffline(true);
+  for (const theme of themes) {
+    assert.ok(app.fetched.includes(theme.background), `Missing precached background ${theme.background}`);
+    const response = await app.dispatch("fetch", { url: origin + theme.background, method: "GET", destination: "image" });
+    assert.equal(await response.text(), "asset");
   }
 });
 

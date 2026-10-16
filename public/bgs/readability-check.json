@@ -1,0 +1,385 @@
+{
+  "note": "Pixel contrast for navy #26384f in the three defined text-preview regions; this is a background check, not a complete interface accessibility audit.",
+  "regions_fractional": {
+    "upper_left": [
+      0.05,
+      0.05,
+      0.55,
+      0.18
+    ],
+    "middle": [
+      0.4,
+      0.42,
+      0.65,
+      0.6
+    ],
+    "lower_right": [
+      0.55,
+      0.8,
+      0.94,
+      0.94
+    ]
+  },
+  "backgrounds": [
+    {
+      "number": "01",
+      "dimensions": [
+        1705,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.47,
+        "middle": 8.67,
+        "lower_right": 8.59
+      }
+    },
+    {
+      "number": "02",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.1,
+        "middle": 8.54,
+        "lower_right": 7.95
+      }
+    },
+    {
+      "number": "03",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.53,
+        "middle": 8.57,
+        "lower_right": 8.16
+      }
+    },
+    {
+      "number": "04",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.26,
+        "middle": 8.67,
+        "lower_right": 8.01
+      }
+    },
+    {
+      "number": "05",
+      "dimensions": [
+        1704,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 7.08,
+        "middle": 8.0,
+        "lower_right": 7.84
+      }
+    },
+    {
+      "number": "06",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.31,
+        "middle": 8.74,
+        "lower_right": 8.22
+      }
+    },
+    {
+      "number": "07",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.04,
+        "middle": 9.33,
+        "lower_right": 8.46
+      }
+    },
+    {
+      "number": "08",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.39,
+        "middle": 8.27,
+        "lower_right": 8.33
+      }
+    },
+    {
+      "number": "09",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.46,
+        "middle": 8.14,
+        "lower_right": 8.35
+      }
+    },
+    {
+      "number": "10",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 9.34,
+        "middle": 9.49,
+        "lower_right": 9.74
+      }
+    },
+    {
+      "number": "11",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.82,
+        "middle": 9.23,
+        "lower_right": 8.81
+      }
+    },
+    {
+      "number": "12",
+      "dimensions": [
+        1704,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.1,
+        "middle": 8.44,
+        "lower_right": 7.99
+      }
+    },
+    {
+      "number": "13",
+      "dimensions": [
+        1705,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.04,
+        "middle": 8.61,
+        "lower_right": 8.09
+      }
+    },
+    {
+      "number": "14",
+      "dimensions": [
+        1705,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 9.14,
+        "middle": 9.49,
+        "lower_right": 8.53
+      }
+    },
+    {
+      "number": "15",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.15,
+        "middle": 8.16,
+        "lower_right": 7.92
+      }
+    },
+    {
+      "number": "16",
+      "dimensions": [
+        1704,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.3,
+        "middle": 8.45,
+        "lower_right": 8.12
+      }
+    },
+    {
+      "number": "17",
+      "dimensions": [
+        1704,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.0,
+        "middle": 8.12,
+        "lower_right": 7.7
+      }
+    },
+    {
+      "number": "18",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.12,
+        "middle": 7.59,
+        "lower_right": 7.72
+      }
+    },
+    {
+      "number": "19",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 9.4,
+        "middle": 9.15,
+        "lower_right": 9.32
+      }
+    },
+    {
+      "number": "20",
+      "dimensions": [
+        1702,
+        924
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.14,
+        "middle": 8.25,
+        "lower_right": 8.3
+      }
+    },
+    {
+      "number": "21",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.77,
+        "middle": 8.93,
+        "lower_right": 7.63
+      }
+    },
+    {
+      "number": "22",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.25,
+        "middle": 8.46,
+        "lower_right": 7.86
+      }
+    },
+    {
+      "number": "23",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.32,
+        "middle": 8.91,
+        "lower_right": 8.06
+      }
+    },
+    {
+      "number": "24",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 7.8,
+        "middle": 8.08,
+        "lower_right": 7.97
+      }
+    },
+    {
+      "number": "25",
+      "dimensions": [
+        1704,
+        923
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.16,
+        "middle": 8.52,
+        "lower_right": 7.92
+      }
+    },
+    {
+      "number": "26",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.0,
+        "middle": 8.23,
+        "lower_right": 7.92
+      }
+    },
+    {
+      "number": "27",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.02,
+        "middle": 8.0,
+        "lower_right": 7.81
+      }
+    },
+    {
+      "number": "28",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.42,
+        "middle": 8.9,
+        "lower_right": 9.18
+      }
+    },
+    {
+      "number": "29",
+      "dimensions": [
+        1705,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.44,
+        "middle": 8.79,
+        "lower_right": 8.22
+      }
+    },
+    {
+      "number": "30",
+      "dimensions": [
+        1706,
+        922
+      ],
+      "minimum_navy_text_contrast": {
+        "upper_left": 8.85,
+        "middle": 8.77,
+        "lower_right": 9.18
+      }
+    }
+  ]
+}

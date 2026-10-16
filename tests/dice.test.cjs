@@ -17,12 +17,38 @@ function load(name, imports = {}, extraExports = "") {
 
 const dice = load("dice");
 const shading = load("dice-shading");
+const pipGeometryHelpers = load("dice-pips", { "./dice": dice });
 const { initializeDiceRenderer } = load("dice-renderer", {
   "./dice": dice, "./dice-full": {}, "./dice-compatible": {}, "./dice-css": {},
 });
 const currentSafari = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/18.0 Safari/605.1.15";
 const olderIPad = "Mozilla/5.0 (iPad; CPU OS 15_8 like Mac OS X) Version/15.6 Mobile/15E148 Safari/604.1";
 const noInitialization = () => {};
+
+test("pip contrast follows the chosen surface color, including saturated colors", () => {
+  for (const color of ["#000000", "#111111", "#23395d", "#0000ff"]) {
+    assert.equal(dice.dicePipColor(color), "#ffffff", color);
+  }
+  for (const color of ["#ffffff", "#fff9f0", "#ffff00", "#00ff00"]) {
+    assert.equal(dice.dicePipColor(color), dice.PIP_COLOR, color);
+  }
+  const state = { value: 5, rolling: false, rollId: 0, index: 0, lightAngle: 0 };
+  assert.equal(dice.diePose(state, 0, false).pipColor, dice.PIP_COLOR);
+  assert.equal(dice.diePose({ ...state, shading: { ...shading.DEFAULT_DICE_SHADING, surfaceColor: "#23395d" } }, 0, false).pipColor, "#ffffff");
+});
+
+test("custom surface colors match in the shader and CSS and reset to white", () => {
+  const controls = shading.createDiceShading();
+  const shader = { uniforms: {}, fragmentShader: "#include <colorspace_fragment>" };
+  controls.onBeforeCompile(shader);
+  const style = { topWhite: 1, shadowDarkness: 0.14, shadowTint: "#224466", surfaceColor: "#224466" };
+  controls.update(style);
+  assert.equal(shading.diceSurfaceColor(style, 1, 0.5), "#224466");
+  assert.equal(shading.diceSurfaceColor(style, 0, 1), "#1d3a58");
+  assert.deepEqual(Array.from(shader.uniforms.diceSurfaceColor.value), [34 / 255, 68 / 255, 102 / 255]);
+  controls.update(shading.DEFAULT_DICE_SHADING);
+  assert.deepEqual(Array.from(shader.uniforms.diceSurfaceColor.value), [1, 1, 1]);
+});
 
 test("the private WebGL 1 engine coexists with modern Three.js in either import order", () => {
   for (const legacyFirst of [false, true]) {
@@ -196,11 +222,51 @@ test("roll motion keeps the rounded model above the table and respects reduced m
   assert.ok(Math.abs(reduced.position[1]) < 1e-10);
 });
 
+test("indexed pip batches preserve every original triangle and normal in both engines", async () => {
+  for (const [THREE, steps, segments] of [[await three, 12, 40], [await import("../app/lib/three-legacy/index.mjs"), 8, 24]]) {
+    const profile = Array.from({ length: steps + 1 }, (_, step) => new THREE.Vector2(
+      (dice.PIP_RADIUS + 0.001) * step / steps, -0.035 * (1 - (step / steps) ** 2),
+    ));
+    const source = new THREE.LatheGeometry(profile, segments);
+    source.rotateX(dice.HALF_PI);
+    const combined = pipGeometryHelpers.combinePipGeometry(source);
+    const vertexCount = source.getAttribute("position").count;
+    const indexCount = source.getIndex().count;
+    assert.equal(combined.positions.length, vertexCount * 21 * 3);
+    assert.equal(combined.indices.length, indexCount * 21);
+    assert.ok(combined.positions.length < indexCount * 21 * 3 / 4, "Index reuse cuts attributes by over 75%");
+    let pocket = 0;
+    for (const [faceIndex, face] of dice.DIE_FACES.entries()) {
+      const rotation = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...dice.FACE_ROTATIONS[faceIndex], 0));
+      for (const pip of dice.PIPS[face]) {
+        const transform = rotation.clone().multiply(new THREE.Matrix4().makeTranslation(
+          ((pip % 3) - 1) * 0.25 * dice.DIE_UV_SCALE, (1 - Math.floor(pip / 3)) * 0.25 * dice.DIE_UV_SCALE, 0.5005,
+        ));
+        const original = source.clone().applyMatrix4(transform);
+        for (const [name, actual] of [["position", combined.positions], ["normal", combined.normals]]) {
+          const expected = original.getAttribute(name).array;
+          const offset = pocket * expected.length;
+          for (let i = 0; i < expected.length; i++) {
+            assert.ok(Math.abs(actual[offset + i] - expected[i]) < 1e-6, `${name} differs on face ${face}`);
+          }
+        }
+        for (let i = 0; i < indexCount; i++) {
+          assert.equal(combined.indices[pocket * indexCount + i], pocket * vertexCount + source.getIndex().getX(i));
+        }
+        original.dispose();
+        pocket++;
+      }
+    }
+    source.dispose();
+  }
+});
+
 test("the lighter model combines all recessed pips while retaining their geometry", async () => {
   const legacy = await import("../app/lib/three-legacy/index.mjs");
   const rounded = await import("../app/lib/three-legacy/addons/RoundedBoxGeometry.mjs");
   const { makeDie } = load("dice-compatible", {
     "./dice-shading": shading,
+    "./dice-pips": pipGeometryHelpers,
     "./three-legacy/index.mjs": legacy,
     "./three-legacy/addons/RoundedBoxGeometry.mjs": rounded,
     "./three-legacy/addons/RoomEnvironment.mjs": {},
@@ -211,7 +277,11 @@ test("the lighter model combines all recessed pips while retaining their geometr
   const pockets = die.model.children[1].geometry;
   const positions = pockets.getAttribute("position");
   const normals = pockets.getAttribute("normal");
-  assert.equal(positions.count, 21 * 24 * 8 * 6);
+  assert.equal(positions.count, 21 * 25 * 9);
+  assert.equal(pockets.getIndex().count, 21 * 24 * 8 * 6);
+  const bytes = positions.array.byteLength + normals.array.byteLength + pockets.getIndex().array.byteLength;
+  const previousBytes = 21 * 24 * 8 * 6 * 3 * 4 * 2;
+  assert.ok(bytes < previousBytes * 0.28, "Indexed pip buffers use at least 72% less memory");
   assert.equal(normals.count, positions.count);
   pockets.computeBoundingBox();
   for (const axis of ["x", "y", "z"]) {
@@ -241,11 +311,18 @@ test("unrolled 3D dice hide pip holes and restore every pip on the first roll", 
     const { makeDie } = load(name, {
       ...imports,
       "./dice-shading": shading,
+      "./dice-pips": pipGeometryHelpers,
       "./dice": { ...dice, pipMask: () => ({ width: 256, height: 256 }) },
     }, "\nexport { makeDie };\n");
     const die = makeDie();
+    assert.equal(die.model.children.length, 2, `${name} batches all 21 pips in one mesh`);
     const body = die.model.children[0];
     const pips = die.model.children.slice(1);
+    const pipMeshes = pips.flatMap((node) => node.isMesh ? [node] : node.children);
+    die.setPipColor("#ffffff");
+    assert.ok(pipMeshes.every((mesh) => mesh.material.color.getHexString() === "ffffff"));
+    die.setPipColor(dice.PIP_COLOR);
+    assert.ok(pipMeshes.every((mesh) => mesh.material.color.getHexString() === "111111"));
     const masks = body.material.map((material) => material.alphaMap);
     die.setUnrolled(true);
     assert.equal(body.visible, true);

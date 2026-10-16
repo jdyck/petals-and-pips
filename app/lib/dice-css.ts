@@ -42,6 +42,7 @@ export function createCssDiceRenderer(): DiceRenderer {
     render(pose) {
       element.dataset.unrolled = String(!!pose.unrolled);
       element.style.setProperty("--die-color", pose.dieColor);
+      element.style.setProperty("--pip-color", pose.pipColor);
       const shade = pose.dieColor.replace(/[a-f\d]{2}/gi, (channel) => Math.round(parseInt(channel, 16) * 0.94).toString(16).padStart(2, "0"));
       element.style.setProperty("--die-shade-color", shade);
       camera.style.transform = `rotateX(${(pose.tiltDegrees ?? DIE_TILT_DEGREES) - 90}deg) rotateY(${-pose.turnDegrees}deg)`;

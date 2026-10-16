@@ -1,19 +1,31 @@
 "use client";
 
-import Image from "next/image";
 import { CaretRight, PlusCircle } from "@phosphor-icons/react";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import HomeScreenInstall from "./home-screen-install";
+import GameLoading from "./game-loading";
 import { DiceMotionToggle, useDiceMotion } from "./dice-motion";
 import { ROLL_DURATION, RollingDie } from "./rolling-die";
 import { DEFAULT_DICE_SHADING } from "../lib/dice-shading";
+import type { DiceShading } from "../lib/dice-shading";
+import { dicePipColor } from "../lib/dice";
+import { DEFAULT_GAME_THEME, gameThemeStyle, randomGameTheme } from "../lib/game-themes";
+import { loadGameBackground } from "../lib/game-loading";
 
 import { CATEGORIES, aiHoldPlan, aiTarget, chooseAiCategory, createGame, gameReducer, matchResult, rankScoreOptions, rollDie, rollFive, selectScoreSuggestions, totalScore, upperSubtotal } from "../lib/game";
 import type { Category, FiveKindCelebration, GameMode } from "../lib/game";
 
-const GAME_DICE_SHADING = { ...DEFAULT_DICE_SHADING, topWhite: 0.99, shadowDarkness: 0.14, shadowTint: "#d8d2c3" };
+const GAME_DICE_SHADING = DEFAULT_DICE_SHADING;
+const GAME_MODES: { mode: GameMode; title: string; description: string }[] = [
+  { mode: "solo", title: "1 player", description: "No opponent" },
+  { mode: "local2", title: "2 players", description: "Pass the device" },
+  { mode: "local3", title: "3 players", description: "Pass the device" },
+  { mode: "local4", title: "4 players", description: "Pass the device" },
+  { mode: "computer", title: "1 player vs computer", description: "Play against the computer" },
+];
 
-function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = false, rollId = 0, label = "Your dice", animateWithReducedMotion = false }: {
+function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = false, rollId = 0, label = "Your dice", animateWithReducedMotion = false, shading = GAME_DICE_SHADING, onReadyChange }: {
   values: number[];
   held?: boolean[];
   onToggle?: (index: number) => void;
@@ -23,13 +35,15 @@ function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = fa
   rollId?: number;
   label?: string;
   animateWithReducedMotion?: boolean;
+  shading?: DiceShading;
+  onReadyChange?: (index: number, ready: boolean) => void;
 }) {
   return (
     <div className="dice-tray" aria-label={label}>
       {values.map((value, index) => {
         const isHeld = held?.[index] ?? false;
         const isRolling = rolling && !isHeld;
-        const dieContents = <RollingDie value={value} unrolled={unrolled} rolling={isRolling} rollId={isHeld ? 0 : rollId} index={index} turnDegrees={0} tiltDegrees={4} fpsLimit={16} shading={GAME_DICE_SHADING} animateWithReducedMotion={animateWithReducedMotion} />;
+        const dieContents = <RollingDie value={value} unrolled={unrolled} rolling={isRolling} rollId={isHeld ? 0 : rollId} index={index} turnDegrees={0} tiltDegrees={4} fpsLimit={16} shading={shading} animateWithReducedMotion={animateWithReducedMotion} onReadyChange={(ready) => onReadyChange?.(index, ready)} />;
         return onToggle ? (
           <button
             className={`die-button${isHeld ? " is-held" : ""}`}
@@ -54,7 +68,7 @@ function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = fa
   );
 }
 
-function Celebration({ award, onContinue }: { award: FiveKindCelebration; onContinue: () => void }) {
+function Celebration({ award, onContinue, shading }: { award: FiveKindCelebration; onContinue: () => void; shading: DiceShading }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const modal = dialog.current;
@@ -66,7 +80,7 @@ function Celebration({ award, onContinue }: { award: FiveKindCelebration; onCont
     <p className="celebration-player">{award.playerName}</p>
     <h2 id="celebration-title">{award.bonusPoints ? "Five of a kind bonus!" : "Five of a kind!"}</h2>
     <div className="celebration-points">+{award.bonusPoints || award.score}</div>
-    <Dice values={award.dice} label={`${award.playerName} rolled five ${award.dice[0]}s`} />
+    <Dice values={award.dice} label={`${award.playerName} rolled five ${award.dice[0]}s`} shading={shading} />
     {(award.categoryLabel === null || award.bonusPoints > 0) && <p id="celebration-detail">{award.categoryLabel === null ? "100 bonus points added! Your matching upper box is already filled. Choose an open category in the lower section for your joker score." : `100 bonus points added, plus ${award.score} points automatically scored in ${award.categoryLabel}.`}</p>}
     <button className="rules-done" type="button" autoFocus onClick={onContinue}>{award.categoryLabel === null ? "Choose a category" : "Continue"}</button>
   </dialog>;
@@ -93,24 +107,95 @@ function ScoreChoices({ options, onChoose, onClose }: {
   </dialog>;
 }
 
+function ScorecardPopup({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const modal = dialog.current!;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modal.showModal();
+    return () => {
+      modal.close();
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  function dismiss() {
+    dialog.current?.close();
+    onClose();
+  }
+
+  return <dialog ref={dialog} id="scorecard-popup" className="rules-modal scorecard-modal" aria-label="Scorecard" onCancel={(event) => { event.preventDefault(); dismiss(); }} onClick={(event) => {
+    if (event.target !== event.currentTarget) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dismiss();
+  }}>
+    <button className="modal-close" type="button" autoFocus onClick={dismiss} aria-label="Close scorecard">×</button>
+    {children}
+  </dialog>;
+}
+
 export default function Game({ initialMode = "solo" }: { initialMode?: GameMode }) {
   const diceMotion = useDiceMotion();
   const [state, dispatch] = useReducer(gameReducer, initialMode, createGame);
+  // Keep the server and first client render identical, then pick the opening theme.
+  const [theme, setTheme] = useState(DEFAULT_GAME_THEME);
+  const [themeChosen, setThemeChosen] = useState(false);
+  const [loadedBackground, setLoadedBackground] = useState<string | null>(null);
+  const [backgroundError, setBackgroundError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [readyDice, setReadyDice] = useState([false, false, false, false, false]);
+  useEffect(() => {
+    setTheme(randomGameTheme());
+    setThemeChosen(true);
+  }, []);
+  useEffect(() => {
+    if (!themeChosen) return;
+    let cancelled = false;
+    setBackgroundError(false);
+    void Promise.all([loadGameBackground(theme.background), document.fonts.ready])
+      .then(() => { if (!cancelled) setLoadedBackground(theme.background); })
+      .catch(() => { if (!cancelled) setBackgroundError(true); });
+    return () => { cancelled = true; };
+  }, [theme.background, themeChosen, loadAttempt]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [allScoresOpen, setAllScoresOpen] = useState(false);
+  const [compactScorecard, setCompactScorecard] = useState(false);
+  const [scorecardOpen, setScorecardOpen] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 699px)");
+    function updateLayout() {
+      setCompactScorecard(media.matches);
+      setScorecardOpen(false);
+    }
+    updateLayout();
+    media.addEventListener("change", updateLayout);
+    return () => media.removeEventListener("change", updateLayout);
+  }, []);
   const [nextMode, setNextMode] = useState<GameMode>(initialMode);
+  const [surfaceColor, setSurfaceColor] = useState<string | null>(null);
+  const [shadowDarkness, setShadowDarkness] = useState(Math.round(GAME_DICE_SHADING.shadowDarkness * 100));
+  const diceShading = useMemo<DiceShading>(() => process.env.NODE_ENV === "development"
+    ? { ...GAME_DICE_SHADING, ...(surfaceColor ? { surfaceColor, topWhite: 1, shadowTint: surfaceColor === GAME_DICE_SHADING.surfaceColor ? GAME_DICE_SHADING.shadowTint : surfaceColor } : {}), shadowDarkness: shadowDarkness / 100 }
+    : GAME_DICE_SHADING, [surfaceColor, shadowDarkness]);
   const { players, currentPlayer, phase, dice, held, rollsLeft, rolling, rollId, status, celebration, jokerChoice } = state;
   const player = players[currentPlayer];
   const isBusy = phase === "computer";
   const humanTurn = phase === "ready" || phase === "playing";
-  const canStartRoll = humanTurn && !rolling && rollsLeft > 0 && !celebration;
+  const diceVisible = phase !== "handoff" && phase !== "finished";
+  const loading = !themeChosen || loadedBackground !== theme.background || (diceVisible && !readyDice.every(Boolean));
+  const canStartRoll = !loading && humanTurn && !rolling && rollsLeft > 0 && !celebration;
   const canRoll = canStartRoll && !(dice.length > 0 && held.every(Boolean));
   const canScore = phase === "playing" && dice.length === 5 && !rolling && !celebration;
   const round = Math.min(13, Math.min(...players.map((item) => item.scores.filter((score) => score !== null).length)) + 1);
   const rankedOptions = canScore ? rankScoreOptions(dice, player.scores) : [];
   const scoreOptions = [...rankedOptions].sort((a, b) => a.index - b.index);
   const suggestions = selectScoreSuggestions(rankedOptions);
+
+  function updateDieReady(index: number, ready: boolean) {
+    setReadyDice((current) => current[index] === ready ? current : current.map((value, position) => position === index ? ready : value));
+  }
 
   function chooseScore(index: number) {
     if (!canScore) return;
@@ -125,7 +210,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
   }, [rolling, isBusy, rollId]);
 
   useEffect(() => {
-    if (phase !== "computer" || celebration) return;
+    if (loading || phase !== "computer" || celebration) return;
     let cancelled = false;
     const pause = (duration: number) => new Promise<void>((resolve) => window.setTimeout(resolve, duration));
     async function play() {
@@ -148,7 +233,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     }
     void play();
     return () => { cancelled = true; };
-  }, [phase, currentPlayer, players, celebration]);
+  }, [loading, phase, currentPlayer, players, celebration]);
 
   function roll() {
     if (!canRoll) return;
@@ -162,9 +247,11 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
   }
 
   function startGame(mode: GameMode) {
+    setTheme(randomGameTheme(theme.id));
     dispatch({ type: "reset", mode });
     setSetupOpen(false);
     setAllScoresOpen(false);
+    setScorecardOpen(false);
   }
 
   function scoreRows(group: Category["group"]) {
@@ -183,64 +270,8 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     });
   }
 
-  return <div className="game-viewport"><div className="game-wrapper"><main className="page-shell">
-    <header className="topbar">
-      <button className="header-button new-game-button" type="button" onClick={() => { setNextMode(state.mode); setSetupOpen(true); }}>New game</button>
-      <h1 className="brand-name">
-        <Image className="brand-logo" src="/pips-and-petals-wordmark.png" alt="Pips & Petals" width={372} height={86} preload unoptimized />
-      </h1>
-      <div className="topbar-right">
-        <HomeScreenInstall />
-        <button className="header-button" type="button" onClick={() => setHelpOpen(true)}>How to play</button>
-      </div>
-    </header>
-
-    <section className={`game-layout${players.length > 2 ? " game-layout-multi" : ""}`} aria-label="Pips & Petals game">
-      <div className="play-column">
-        <div className="play-card">
-          <div className="play-card-top">
-            <span className="round-mini">Round {round} of 13</span>
-          </div>
-          <div className="dice-stage">
-            {phase === "finished" ? <p className="turn-message match-result" aria-live="polite">{matchResult(players)}</p>
-              : phase === "handoff" ? <p className="turn-message">Pass the device to {player.name}.</p>
-                : <div className="dice-display">
-                  <Dice values={dice.length ? dice : [1, 1, 1, 1, 1]} unrolled={!dice.length} held={held} onToggle={isBusy ? undefined : (index) => dispatch({ type: "hold", index })} disabled={!dice.length || rolling || !humanTurn || rollsLeft === 0} rolling={rolling} rollId={rollId} label={dice.length ? `${player.name}’s dice` : "Roll the dice to start"} animateWithReducedMotion={diceMotion.animateDice} />
-                </div>}
-          </div>
-          <div className="play-actions">
-            {phase === "handoff" ? <button className="roll-button" type="button" onClick={() => dispatch({ type: "ready" })}>{player.name} is ready</button>
-              : phase === "finished" ? <button className="roll-button" type="button" onClick={() => startGame(state.mode)}>Play again</button>
-                : rollsLeft > 0 ? <button className="roll-button" type="button" onClick={roll} disabled={!canRoll}>{isBusy ? "Computer’s turn" : rolling ? "Rolling…" : jokerChoice ? "Choose a score" : dice.length ? "Roll again" : "Roll the dice"}</button> : null}
-            {humanTurn && <span className="roll-count" role="status">{rolling ? "Rolling…" : `${rollsLeft} ${rollsLeft === 1 ? "roll" : "rolls"} left`}</span>}
-          </div>
-        </div>
-
-        <div className="scoring-heading"><span>{phase === "finished" ? "A lovely game, well played" : phase === "handoff" ? "A fresh turn awaits" : canScore ? "Tap a card to score" : isBusy ? `${player.name}’s turn` : rolling ? "Rolling…" : "Roll to find your next score"}</span></div>
-        <div className="score-suggestions" aria-label="Suggested scores">
-          {Array.from({ length: 3 }, (_, position) => {
-            const suggestion = suggestions[position];
-            if (!suggestion) return <div className="suggestion-card" key={`empty-${position}`} aria-hidden="true" />;
-            const { category, index, points } = suggestion;
-            return <button className="suggestion-card" type="button" key={category.id} onClick={() => chooseScore(index)} aria-label={`Score ${points} points in ${category.label}`}>
-              <span className="suggestion-name">{category.label}</span>
-              <span className="suggestion-points">{points}<span> pts</span></span>
-              <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
-            </button>;
-          })}
-        </div>
-        <button className="choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
-          <PlusCircle size={30} weight="thin" aria-hidden="true" /><span>Choose another score</span>
-        </button>
-        {jokerChoice && <p className="joker-choice-message" role="status">+100 bonus added. Choose an open category in the lower section of the scorecard.</p>}
-        <div className="play-utilities">
-          <DiceMotionToggle {...diceMotion} />
-          {process.env.NODE_ENV === "development" && <details className="dev-controls"><summary>Dev mode</summary><button className="header-button" type="button" disabled={!canStartRoll} onClick={rollFiveKind}>Roll five of a kind</button></details>}
-        </div>
-        <div className="live-status" aria-live="polite">{phase === "finished" ? "" : status}</div>
-      </div>
-
-      <div className="scoreboard-card">
+  const scorecard = (
+    <div className="scoreboard-card">
         <h2 className="scorecard-title">Scorecard</h2>
         <div className="score-table-wrap" tabIndex={0} role="region" aria-label="Player scores">
           <table className={`score-table${players.length > 2 ? " score-table-multi" : ""}`}>
@@ -268,25 +299,101 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
           </table>
         </div>
       </div>
+  );
+
+  return <div className="game-viewport" style={gameThemeStyle(theme)} data-theme={theme.id}>
+    {loading && <GameLoading error={backgroundError} onRetry={() => { setBackgroundError(false); setLoadAttempt((attempt) => attempt + 1); }} />}
+    <div className={`game-wrapper${loading ? " is-loading" : ""}`} inert={loading} aria-hidden={loading} aria-busy={loading}><main className="page-shell">
+    <header className="topbar">
+      <button className="header-button new-game-button" type="button" onClick={() => { setNextMode(state.mode); setSetupOpen(true); }}>New game</button>
+      <h1 className="brand-name">Pips &amp; Petals</h1>
+      <div className="topbar-right">
+        <HomeScreenInstall />
+        <button className="header-button" type="button" onClick={() => setHelpOpen(true)}>How to play</button>
+      </div>
+    </header>
+
+    <section className={`game-layout${players.length > 2 ? " game-layout-multi" : ""}`} aria-label="Pips & Petals game">
+      <div className="play-column">
+        <div className="play-card">
+          <div className="play-card-top">
+            <span className="round-mini">Round {round} of 13</span>
+          </div>
+          <div className="dice-stage">
+            {phase === "finished" ? <p className="turn-message match-result" aria-live="polite">{matchResult(players)}</p>
+              : phase === "handoff" ? <p className="turn-message">Pass the device to {player.name}.</p>
+                : <div className="dice-display">
+                  <Dice values={dice.length ? dice : [1, 1, 1, 1, 1]} unrolled={!dice.length} held={held} onToggle={isBusy ? undefined : (index) => dispatch({ type: "hold", index })} disabled={!dice.length || rolling || !humanTurn || rollsLeft === 0} rolling={rolling} rollId={rollId} label={dice.length ? `${player.name}’s dice` : "Roll the dice to start"} animateWithReducedMotion={diceMotion.animateDice} shading={diceShading} onReadyChange={updateDieReady} />
+                </div>}
+          </div>
+          <div className="play-actions">
+            {phase === "handoff" ? <button className="roll-button" type="button" onClick={() => dispatch({ type: "ready" })}>{player.name} is ready</button>
+              : phase === "finished" ? <button className="roll-button" type="button" onClick={() => startGame(state.mode)}>Play again</button>
+                : rollsLeft > 0 ? <button className="roll-button" type="button" onClick={roll} disabled={!canRoll}>
+                  <span>{isBusy ? "Computer’s turn" : jokerChoice ? "Choose a score" : dice.length ? "Roll again" : "Roll the dice"}</span>
+                  {humanTurn && <span className="roll-count" role="status">{rollsLeft} {rollsLeft === 1 ? "roll" : "rolls"} left</span>}
+                </button> : null}
+            {humanTurn && rollsLeft === 0 && <span className="roll-count" role="status">0 rolls left</span>}
+          </div>
+        </div>
+
+        <div className="scoring-heading"><span>{phase === "finished" ? "A lovely game, well played" : phase === "handoff" ? "A fresh turn awaits" : canScore ? "Tap a card to score" : isBusy ? `${player.name}’s turn` : rolling ? "Rolling…" : "Roll to find your next score"}</span></div>
+        <div className="score-suggestions" aria-label="Suggested scores">
+          {Array.from({ length: 3 }, (_, position) => {
+            const suggestion = suggestions[position];
+            if (!suggestion) return <div className="suggestion-card" key={`empty-${position}`} aria-hidden="true" />;
+            const { category, index, points } = suggestion;
+            return <button className="suggestion-card" type="button" key={category.id} onClick={() => chooseScore(index)} aria-label={`Score ${points} points in ${category.label}`}>
+              <span className="suggestion-name">{category.label}</span>
+              <span className="suggestion-points">{points}<span> pts</span></span>
+              <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
+            </button>;
+          })}
+        </div>
+        <button className="choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
+          <PlusCircle size={30} weight="thin" aria-hidden="true" /><span>Choose another score</span>
+        </button>
+        {jokerChoice && <p className="joker-choice-message" role="status">+100 bonus added. Choose an open category in the lower section of the scorecard.</p>}
+        <div className="play-utilities">
+          <DiceMotionToggle {...diceMotion} />
+          {process.env.NODE_ENV === "development" && <details className="dev-controls">
+            <summary>Dev mode</summary>
+            <div className="dev-controls-panel">
+              <label className="dev-dice-color">Dice surface <input type="color" value={surfaceColor ?? GAME_DICE_SHADING.surfaceColor} onChange={(event) => setSurfaceColor(event.target.value)} /></label>
+              <p><code>{(surfaceColor ?? GAME_DICE_SHADING.surfaceColor).toUpperCase()}</code> · {dicePipColor(surfaceColor ?? GAME_DICE_SHADING.surfaceColor) === "#ffffff" ? "White" : "Dark"} pips (automatic)</p>
+              <label className="dev-dice-shadow">
+                <span>Shadow darkness <span>{shadowDarkness}%</span></span>
+                <input type="range" min="0" max="100" step="1" value={shadowDarkness} onChange={(event) => setShadowDarkness(Number(event.target.value))} aria-label="Shadow darkness" aria-valuetext={`${shadowDarkness} percent`} />
+              </label>
+              <button className="header-button" type="button" disabled={surfaceColor === null && shadowDarkness === Math.round(GAME_DICE_SHADING.shadowDarkness * 100)} onClick={() => { setSurfaceColor(null); setShadowDarkness(Math.round(GAME_DICE_SHADING.shadowDarkness * 100)); }}>Reset dice appearance</button>
+              <button className="header-button" type="button" disabled={!canStartRoll} onClick={rollFiveKind}>Roll five of a kind</button>
+            </div>
+          </details>}
+        </div>
+        <div className="live-status" aria-live="polite">{phase === "finished" ? "" : status}</div>
+        <button className="header-button scorecard-toggle" type="button" aria-haspopup="dialog" aria-expanded={scorecardOpen} aria-controls={scorecardOpen ? "scorecard-popup" : undefined} onClick={() => setScorecardOpen(true)}>Scorecard</button>
+      </div>
+
+      {!compactScorecard && scorecard}
     </section>
+
+    {compactScorecard && scorecardOpen && <ScorecardPopup onClose={() => setScorecardOpen(false)}>{scorecard}</ScorecardPopup>}
 
     {allScoresOpen && <ScoreChoices options={scoreOptions} onChoose={chooseScore} onClose={() => setAllScoresOpen(false)} />}
 
-    {celebration && <Celebration award={celebration} onContinue={() => dispatch({ type: "dismissCelebration" })} />}
+    {celebration && <Celebration award={celebration} onContinue={() => dispatch({ type: "dismissCelebration" })} shading={diceShading} />}
 
     {setupOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSetupOpen(false); }}>
       <section className="rules-modal setup-modal" role="dialog" aria-modal="true" aria-labelledby="setup-title">
         <button className="modal-close" type="button" onClick={() => setSetupOpen(false)} aria-label="Close game setup">×</button>
         <h2 id="setup-title">New game</h2>
-        <label className="game-mode-label" htmlFor="game-mode">Players</label>
-        <select id="game-mode" className="game-mode-select" value={nextMode} onChange={(event) => setNextMode(event.target.value as GameMode)}>
-          <option value="solo">1 player · no opponent</option>
-          <option value="local2">2 players · pass the device</option>
-          <option value="local3">3 players · pass the device</option>
-          <option value="local4">4 players · pass the device</option>
-          <option value="computer">1 player vs computer</option>
-
-        </select>
+        <fieldset className="game-mode-options">
+          <legend>Players</legend>
+          {GAME_MODES.map(({ mode, title, description }) => <button className="game-mode-option" type="button" key={mode} aria-pressed={nextMode === mode} onClick={() => setNextMode(mode)}>
+            <span><strong>{title}</strong><span className="game-mode-description">{description}</span></span>
+            <span className="game-mode-check" aria-hidden="true">{nextMode === mode ? "✓" : ""}</span>
+          </button>)}
+        </fieldset>
         {players.some((item) => item.scores.some((score) => score !== null)) && <p>Starting a new game resets the current scores.</p>}
         <button className="rules-done" type="button" onClick={() => startGame(nextMode)}>Start game</button>
       </section>

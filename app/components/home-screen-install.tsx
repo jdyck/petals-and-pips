@@ -53,7 +53,7 @@ export default function HomeScreenInstall() {
   if (!showInstall) return null;
 
   return <>
-    <button className="header-button" type="button" onClick={() => setOpen(true)}>Install</button>
+    <button className="header-button install-button" type="button" onClick={() => setOpen(true)}>Install</button>
     {open && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="install-title">
         <button className="modal-close" type="button" onClick={() => setOpen(false)} aria-label="Close install instructions">×</button>

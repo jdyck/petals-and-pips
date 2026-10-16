@@ -1,9 +1,10 @@
 import * as THREE from "./three-legacy/index.mjs";
 import { RoundedBoxGeometry } from "./three-legacy/addons/RoundedBoxGeometry.mjs";
 import { RoomEnvironment } from "./three-legacy/addons/RoomEnvironment.mjs";
-import { DIE_RADIUS as RADIUS, DIE_COLOR, PIP_COLOR, PIP_RADIUS, DIE_UV_SCALE as UV_SCALE, PIPS, HALF_PI, DIE_FACES as FACES, FACE_ROTATIONS, DIE_CAMERA_ZOOM, DIE_CANVAS_SCALE, dieCameraPosition, pipMask } from "./dice";
+import { DIE_RADIUS as RADIUS, DIE_COLOR, PIP_COLOR, PIP_RADIUS, HALF_PI, DIE_FACES as FACES, DIE_CAMERA_ZOOM, DIE_CANVAS_SCALE, dieCameraPosition, pipMask } from "./dice";
 import type { DiceRenderer } from "./dice";
 import { createDiceShading } from "./dice-shading";
+import { combinePipGeometry } from "./dice-pips";
 
 function makeDie() {
   const model = new THREE.Group();
@@ -38,37 +39,34 @@ function makeDie() {
   const pipMaterial = new THREE.MeshStandardMaterial({
     color: PIP_COLOR, roughness: 0.52, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.06,
   });
-  // Merge all 21 recessed pips so older GPUs draw them in one call per pass.
-  const source = pipGeometry.toNonIndexed();
-  const pipPositions = new Float32Array(source.getAttribute("position").array.length * 21);
-  const pipNormals = new Float32Array(source.getAttribute("normal").array.length * 21);
-  let offset = 0;
-  FACES.forEach((face, faceIndex) => {
-    const rotation = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(FACE_ROTATIONS[faceIndex][0], FACE_ROTATIONS[faceIndex][1], 0));
-    PIPS[face].forEach((pip) => {
-      const transform = rotation.clone().multiply(new THREE.Matrix4().makeTranslation(
-        ((pip % 3) - 1) * 0.25 * UV_SCALE, (1 - Math.floor(pip / 3)) * 0.25 * UV_SCALE, 0.5005,
-      ));
-      const pocket = source.clone().applyMatrix4(transform);
-      const positions = pocket.getAttribute("position").array;
-      pipPositions.set(positions, offset);
-      pipNormals.set(pocket.getAttribute("normal").array, offset);
-      offset += positions.length;
-      pocket.dispose();
-    });
-  });
-  source.dispose();
+  // One draw call for all pips, with the original curved surfaces and normals.
+  const { positions, normals, indices } = combinePipGeometry(pipGeometry);
   const pocketsGeometry = new THREE.BufferGeometry();
-  pocketsGeometry.setAttribute("position", new THREE.BufferAttribute(pipPositions, 3));
-  pocketsGeometry.setAttribute("normal", new THREE.BufferAttribute(pipNormals, 3));
+  pocketsGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  pocketsGeometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  pocketsGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
   const pockets = new THREE.Mesh(pocketsGeometry, pipMaterial);
   model.add(pockets);
+  let surfaceColor = DIE_COLOR;
+  let pipColor = PIP_COLOR;
+  let blank = false;
   return {
     model,
     shading,
-    setColor(color: string) { materials.forEach((material) => material.color.set(color)); },
+    setColor(color: string) {
+      if (color === surfaceColor) return;
+      surfaceColor = color;
+      materials.forEach((material) => material.color.set(color));
+    },
+    setPipColor(color: string) {
+      if (color === pipColor) return;
+      pipColor = color;
+      pipMaterial.color.set(color);
+    },
     setUnrolled(unrolled: boolean) {
-      model.children.slice(1).forEach((pips) => { pips.visible = !unrolled; });
+      if (blank === unrolled) return;
+      blank = unrolled;
+      pockets.visible = !unrolled;
       materials.forEach((material, index) => {
         const mask = unrolled ? null : masks[index];
         if (material.alphaMap !== mask) {
@@ -128,10 +126,17 @@ export function createCompatibleDiceRenderer(): DiceRenderer {
     fill.position.set(4, 2, -3);
     scene.add(fill, new THREE.HemisphereLight("#ffffff", "#555555", 0.08));
 
+    let lastTurn = NaN;
+    let lastTilt: number | undefined = NaN;
+    let lastWidth = 0;
+    let lastHeight = 0;
     return {
       element: renderer.domElement,
       kind: "compatible",
       resize(width, height) {
+        if (width === lastWidth && height === lastHeight) return;
+        lastWidth = width;
+        lastHeight = height;
         renderer.setSize(width * 2, height * 1.6, false);
         camera.aspect = (width * 2) / (height * 1.6);
         camera.updateProjectionMatrix();
@@ -141,8 +146,13 @@ export function createCompatibleDiceRenderer(): DiceRenderer {
         die.shading.update(pose.shading);
         renderer.toneMappingExposure = 0.9 * pose.brightness;
         die.setColor(pose.dieColor);
-        camera.position.set(...dieCameraPosition(pose.turnDegrees, pose.tiltDegrees));
-        camera.lookAt(0, 0.3, 0);
+        die.setPipColor(pose.pipColor);
+        if (pose.turnDegrees !== lastTurn || pose.tiltDegrees !== lastTilt) {
+          lastTurn = pose.turnDegrees;
+          lastTilt = pose.tiltDegrees;
+          camera.position.set(...dieCameraPosition(pose.turnDegrees, pose.tiltDegrees));
+          camera.lookAt(0, 0.3, 0);
+        }
         die.model.rotation.set(...pose.rotation);
         die.model.position.set(...pose.position);
         key.position.set(...pose.light);

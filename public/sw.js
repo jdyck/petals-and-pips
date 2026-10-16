@@ -1,12 +1,17 @@
 // Bump this version when deploying a new build so its entire shell is cached.
-const CACHE_NAME = "petals-and-pips-shell-v6";
+const CACHE_NAME = "petals-and-pips-shell-v11";
 const APP_ROOT = "/";
 const APP_ROUTES = [APP_ROOT, "/pass-and-play"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    const assets = new Set(["/manifest.webmanifest", "/icon", "/apple-icon", "/pips-and-petals-logo.png", "/pips-and-petals-wordmark.png", "/iris-watercolor.webp"]);
+    const assets = new Set(["/manifest.webmanifest", "/icon", "/apple-icon"]);
+    const themesResponse = await fetch("/bgs/themes.json", { cache: "reload" });
+    if (!themesResponse.ok) throw new Error("Unable to cache game themes.");
+    await cache.put("/bgs/themes.json", themesResponse.clone());
+    const themes = await themesResponse.json();
+    for (const theme of themes) assets.add(theme.background);
     for (const route of APP_ROUTES) {
       const response = await fetch(route, { cache: "reload" });
       if (!response.ok) throw new Error("Unable to cache Petals & Pips.");
