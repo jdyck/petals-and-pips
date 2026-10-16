@@ -64,7 +64,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .is-held .hold-caption { opacity: 1; }
 .is-held .die-scene::after { content: ''; position: absolute; box-sizing: border-box; left: 50%; top: 50%; height: calc(56.6% + 8px); aspect-ratio: 1; transform: translate(-50%, -50%); border: 2.5px solid var(--accent); border-radius: 14%; pointer-events: none; }
 .is-held .die-scene[data-renderer="css"]::after { height: calc(67% + 8px); }
-.opponent-die { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 84px; height: 124px; }
 .turn-message { margin: 0; text-align: center; font: 400 28px/1.2 var(--display); }
 .play-actions { display: flex; align-items: center; justify-content: center; }
 .roll-button, .rules-done { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 2px; background: var(--accent); color: #ffffff; font-size: 13px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: background .15s ease; }
@@ -208,7 +207,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
   .play-card { height: 300px; padding: 18px 16px 24px; }
   .play-actions .roll-button { flex-basis: 240px; max-width: 50%; }
   .round-mini { font-size: 11px; letter-spacing: 2px; }
-  .die-button, .opponent-die { height: 110px; }
+  .die-button { height: 110px; }
   .die-scene { --die-size: 58px; width: 68px; height: 100px; }
   .dice-tray { gap: 2px; }
   .scoring-heading { gap: 12px; font-size: 11px; letter-spacing: 1.8px; }
@@ -226,7 +225,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 @media (max-width: 420px) {
   .play-card { height: 285px; padding-right: 12px; padding-left: 12px; }
   .die-scene { --die-size: 47px; width: 55px; height: 88px; }
-  .die-button, .opponent-die { height: 100px; }
+  .die-button { height: 100px; }
   .roll-button { font-size: 11px; letter-spacing: 2px; }
   .suggestion-card { min-height: 120px; padding: 16px 10px 30px; }
   .score-suggestions { min-height: 120px; gap: 10px; }

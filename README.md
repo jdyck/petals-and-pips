@@ -1,4 +1,4 @@
-# Petals & Pips
+# Pips & Petals
 
 A five-dice game built with the Next.js App Router. Play thirteen scoring categories on your own, against Player 2, the computer opponent, or share the device with two to four local players.
 
@@ -47,6 +47,6 @@ Use an HTTPS host or HTTPS reverse proxy in front of the server. Opening an HTTP
 1. Open the game's HTTPS URL in **Safari** on the iPad.
 2. Tap **Install** in the game for instructions. Wait until it says **Ready for offline play**.
 3. Tap Safari's **Share** button → **Add to Home Screen** → **Add**.
-4. Open **Petals & Pips** from the Home Screen once while online, then it can launch and play offline.
+4. Open **Pips & Petals** from the Home Screen once while online, then it can launch and play offline.
 
 The installed app opens without Safari's toolbar, with a dice icon. Solo, computer, and two-to-four-player games work offline after setup; the separate 3D dice prototype is not precached. Scores last for the current session and reset if the app reloads. Before deploying a new build, bump `CACHE_NAME` in `public/sw.js` so installed apps download the new complete offline shell.

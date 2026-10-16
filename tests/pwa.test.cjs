@@ -64,7 +64,7 @@ test("offline setup includes both games, JavaScript, CSS, fonts and Home Screen 
   const app = worker();
   await app.dispatch("install");
   assert.equal(app.skipped, true);
-  for (const asset of ["/", "/pass-and-play", "/_next/static/chunks/game.js", "/_next/static/chunks/game.css", "/_next/static/media/game.woff2", "/manifest.webmanifest", "/icon", "/apple-icon"]) {
+  for (const asset of ["/", "/pass-and-play", "/_next/static/chunks/game.js", "/_next/static/chunks/game.css", "/_next/static/media/game.woff2", "/manifest.webmanifest", "/favicon.ico", "/icon.svg", "/icons/pips-and-petals-192.png", "/icons/pips-and-petals-512.png", "/apple-icon.png"]) {
     assert.ok(app.fetched.includes(asset), `Missing precached asset ${asset}`);
   }
 });
@@ -103,14 +103,16 @@ test("both launch routes and their assets work offline, including URL query stri
 
 test("activation removes old game caches and preserves unrelated caches", async () => {
   const app = worker();
-  await app.caches.open("petals-and-pips-shell-v1");
+  await app.caches.open("petals-and-pips-shell-v11");
+  await app.caches.open("pips-and-petals-shell-v1");
   await app.caches.open("lucky-five-shell-v1");
   await app.caches.open("another-app");
   await app.dispatch("install");
   await app.dispatch("activate");
   const names = await app.caches.keys();
   assert.ok(names.includes("another-app"));
-  assert.equal(names.filter((name) => name.startsWith("petals-and-pips-")).length, 1);
-  assert.ok(!names.includes("petals-and-pips-shell-v1"));
+  assert.equal(names.filter((name) => name.startsWith("pips-and-petals-")).length, 1);
+  assert.ok(!names.includes("petals-and-pips-shell-v11"));
+  assert.ok(!names.includes("pips-and-petals-shell-v1"));
   assert.ok(!names.includes("lucky-five-shell-v1"));
 });

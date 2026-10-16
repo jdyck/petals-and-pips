@@ -34,7 +34,7 @@ export default function DicePrototype() {
   return (
     <main className="die-preview-page">
       <header className="die-preview-header">
-        <Link href="/" className="die-preview-back">← Back to Petals & Pips</Link>
+        <Link href="/" className="die-preview-back">← Back to Pips & Petals</Link>
       </header>
       <section className="die-preview-card">
         <h1>Dice preview</h1>

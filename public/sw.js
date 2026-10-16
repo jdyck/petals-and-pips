@@ -1,12 +1,12 @@
 // Bump this version when deploying a new build so its entire shell is cached.
-const CACHE_NAME = "petals-and-pips-shell-v11";
+const CACHE_NAME = "pips-and-petals-shell-v13";
 const APP_ROOT = "/";
 const APP_ROUTES = [APP_ROOT, "/pass-and-play"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    const assets = new Set(["/manifest.webmanifest", "/icon", "/apple-icon"]);
+    const assets = new Set(["/manifest.webmanifest", "/favicon.ico", "/icon.svg", "/icons/pips-and-petals-192.png", "/icons/pips-and-petals-512.png", "/apple-icon.png"]);
     const themesResponse = await fetch("/bgs/themes.json", { cache: "reload" });
     if (!themesResponse.ok) throw new Error("Unable to cache game themes.");
     await cache.put("/bgs/themes.json", themesResponse.clone());
@@ -14,7 +14,7 @@ self.addEventListener("install", (event) => {
     for (const theme of themes) assets.add(theme.background);
     for (const route of APP_ROUTES) {
       const response = await fetch(route, { cache: "reload" });
-      if (!response.ok) throw new Error("Unable to cache Petals & Pips.");
+      if (!response.ok) throw new Error("Unable to cache Pips & Petals.");
       await cache.put(route, response.clone());
       const html = await response.text();
       for (const match of html.matchAll(/(?:src|href)="([^\"]*\/_next\/static\/[^\"]+)"/g)) {
@@ -45,7 +45,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const cacheNames = await caches.keys();
-    await Promise.all(cacheNames.filter((name) => (name.startsWith("lucky-five-") || name.startsWith("petals-and-pips-")) && name !== CACHE_NAME).map((name) => caches.delete(name)));
+    await Promise.all(cacheNames.filter((name) => (name.startsWith("lucky-five-") || name.startsWith("petals-and-pips-") || name.startsWith("pips-and-petals-")) && name !== CACHE_NAME).map((name) => caches.delete(name)));
     await self.clients.claim();
   })());
 });

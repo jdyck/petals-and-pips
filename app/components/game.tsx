@@ -44,24 +44,19 @@ function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = fa
         const isHeld = held?.[index] ?? false;
         const isRolling = rolling && !isHeld;
         const dieContents = <RollingDie value={value} unrolled={unrolled} rolling={isRolling} rollId={isHeld ? 0 : rollId} index={index} turnDegrees={0} tiltDegrees={4} fpsLimit={16} shading={shading} animateWithReducedMotion={animateWithReducedMotion} onReadyChange={(ready) => onReadyChange?.(index, ready)} />;
-        return onToggle ? (
+        return (
           <button
             className={`die-button${isHeld ? " is-held" : ""}`}
             type="button"
             key={index}
-            onClick={() => onToggle(index)}
-            disabled={disabled}
-            aria-pressed={isHeld}
-            aria-label={`Die ${index + 1}: ${unrolled ? "not rolled" : isRolling ? "rolling" : value}${isHeld ? ", held" : ", tap to hold"}`}
+            onClick={() => onToggle?.(index)}
+            disabled={disabled || !onToggle}
+            aria-pressed={onToggle ? isHeld : undefined}
+            aria-label={`Die ${index + 1}: ${unrolled ? "not rolled" : isRolling ? "rolling" : value}${isHeld ? ", held" : onToggle ? ", tap to hold" : ""}`}
           >
             {dieContents}
             <span className="hold-caption">{isHeld ? "Held" : ""}</span>
           </button>
-        ) : (
-          <span className="opponent-die" key={index} aria-label={`Die ${index + 1}: ${unrolled ? "not rolled" : isRolling ? "rolling" : value}`}>
-            {dieContents}
-            <span className="hold-caption" aria-hidden="true" />
-          </span>
         );
       })}
     </div>

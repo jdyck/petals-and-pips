@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "petals-and-pips-animate-dice";
+const STORAGE_KEY = "pips-and-petals-animate-dice";
 
 export function useDiceMotion() {
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -14,7 +14,10 @@ export function useDiceMotion() {
     update();
     preference.addEventListener("change", update);
     try {
-      setAnimateDice(window.localStorage.getItem(STORAGE_KEY) === "true");
+      const saved = window.localStorage.getItem(STORAGE_KEY)
+        ?? window.localStorage.getItem("petals-and-pips-animate-dice");
+      setAnimateDice(saved === "true");
+      if (saved !== null) window.localStorage.setItem(STORAGE_KEY, saved);
     } catch {
       // The toggle also works when browser storage is unavailable.
     }

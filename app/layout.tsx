@@ -17,21 +17,23 @@ const display = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Petals & Pips — A Dice Game",
+  title: "Pips & Petals — A Dice Game",
   description: "A dice game against the computer or with up to four players sharing one device.",
-  applicationName: "Petals & Pips",
+  applicationName: "Pips & Petals",
   formatDetection: { telephone: false },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Petals & Pips",
+    title: "Pips & Petals",
     statusBarStyle: "default",
   },
   // Next.js emits the generic capable tag; iPadOS 15 also needs Apple's tag.
   other: { "apple-mobile-web-app-capable": "yes" },
   icons: {
-    icon: "/icon",
-    apple: { url: "/apple-icon", sizes: "180x180", type: "image/png" },
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
   },
 };
 

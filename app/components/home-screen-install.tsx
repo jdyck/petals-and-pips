@@ -62,7 +62,7 @@ export default function HomeScreenInstall() {
         <ol>
           <li>Tap the <strong>Share</strong> button (the square with an upward arrow).</li>
           <li>Choose <strong>Add to Home Screen</strong> in the share menu.</li>
-          <li>Tap <strong>Add</strong>, then open <strong>Petals &amp; Pips</strong> from your Home Screen.</li>
+          <li>Tap <strong>Add</strong>, then open <strong>Pips &amp; Petals</strong> from your Home Screen.</li>
         </ol>
         <p className="rules-note" role="status">{offlineReady
           ? "Ready for offline play. Open the Home Screen app once while online to finish setting it up."
