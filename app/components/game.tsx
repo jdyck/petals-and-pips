@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import HomeScreenInstall from "./home-screen-install";
 import GameLoading from "./game-loading";
 import { DiceMotionToggle, useDiceMotion } from "./dice-motion";
+import { useDeviceHighScore } from "./use-device-high-score";
 import { ROLL_DURATION, RollingDie } from "./rolling-die";
 import { DEFAULT_DICE_SHADING } from "../lib/dice-shading";
 import type { DiceShading } from "../lib/dice-shading";
@@ -175,6 +176,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     ? { ...GAME_DICE_SHADING, ...(surfaceColor ? { surfaceColor, topWhite: 1, shadowTint: surfaceColor === GAME_DICE_SHADING.surfaceColor ? GAME_DICE_SHADING.shadowTint : surfaceColor } : {}), shadowDarkness: shadowDarkness / 100 }
     : GAME_DICE_SHADING, [surfaceColor, shadowDarkness]);
   const { players, currentPlayer, phase, dice, held, rollsLeft, rolling, rollId, status, celebration, jokerChoice } = state;
+  const deviceHighScore = useDeviceHighScore(players, phase === "finished");
   const player = players[currentPlayer];
   const isBusy = phase === "computer";
   const humanTurn = phase === "ready" || phase === "playing";
@@ -268,6 +270,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
   const scorecard = (
     <div className="scoreboard-card">
         <h2 className="scorecard-title">Scorecard</h2>
+        <p className="device-high-score">Device high score: <span>{deviceHighScore ?? "—"}</span></p>
         <div className="score-table-wrap" tabIndex={0} role="region" aria-label="Player scores">
           <table className={`score-table${players.length > 2 ? " score-table-multi" : ""}`}>
             <colgroup>

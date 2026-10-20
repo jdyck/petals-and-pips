@@ -100,6 +100,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 
 .scoreboard-card { min-width: 0; }
 .scorecard-title { margin: -3px 0 5px 4px; font: 400 44px/1.1 var(--display); letter-spacing: -1.5px; }
+.device-high-score { margin: 0 0 10px 4px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.device-high-score > span { color: var(--ink-soft); font-weight: 600; }
 .score-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .score-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
 .score-table thead th { height: 30px; border-bottom: 1px solid var(--line); color: var(--ink); font: 400 15px/1 var(--display); text-align: center; }
