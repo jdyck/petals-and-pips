@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { diePose, dicePipColor, DIE_SIDEWAYS_DEGREES, DIE_TILT_DEGREES, DIE_COLOR, DIE_LIGHT_ANGLE } from "../lib/dice";
+import { diePose, DIE_SIDEWAYS_DEGREES, DIE_TILT_DEGREES, DIE_COLOR, DIE_LIGHT_ANGLE } from "../lib/dice";
 import { initializeDiceRenderer } from "../lib/dice-renderer";
 import type { DiceQuality, DiceRenderer } from "../lib/dice";
 import type { DiceShading } from "../lib/dice-shading";
@@ -136,7 +136,6 @@ export function RollingDie({ value, rolling = false, rollId = 0, index = 0, ligh
   }, [quality]);
 
   return <span ref={host} className={`die-scene${rolling ? " is-rolling" : ""}${unrolled ? " is-unrolled" : ""}`} data-animate-with-reduced-motion={animateWithReducedMotion} aria-hidden="true">
-    <span className="die-roll-placeholder">?</span>
-    {unrolled && <span className="die-unrolled-mark" style={shading?.surfaceColor ? { color: dicePipColor(shading.surfaceColor) } : undefined}>?</span>}
+    <span className="die-roll-placeholder" />
   </span>;
 }

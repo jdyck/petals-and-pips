@@ -288,7 +288,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
               </tr>
               <tr className="subtotal-row score-summary-row"><th scope="row" title="Reach 63 from Ones through Sixes for a 35-point bonus">Bonus (63+)</th>{players.map((item, index) => <td className={index === currentPlayer ? "player-score-cell" : ""} key={item.name} title={`${upperSubtotal(item.scores)} / 63 points`}>{upperSubtotal(item.scores) >= 63 ? 35 : item.scores.slice(0, 6).every((score) => score !== null) ? 0 : "–"}</td>)}</tr>
               {scoreRows("lower")}
-              {players.some((item) => item.bonus > 0) && <tr className="subtotal-row five-kind-bonus-row"><th scope="row" title="Each additional five of a kind earns +100 points">Five of a kind bonus</th>{players.map((item, index) => <td className={index === currentPlayer ? "player-score-cell" : ""} key={item.name}>{item.bonus ? `+${item.bonus}` : "–"}</td>)}</tr>}
+              <tr className="subtotal-row score-summary-row"><th scope="row" title="Each additional five of a kind earns +100 points">Five of a kind bonus</th>{players.map((item, index) => <td className={index === currentPlayer ? "player-score-cell" : ""} key={item.name}>{item.bonus ? `+${item.bonus}` : "–"}</td>)}</tr>
             </tbody>
             <tfoot><tr className="total-row"><th scope="row" title="Including bonuses">Total</th>{players.map((item, index) => <td className={index === currentPlayer ? "player-score-cell" : ""} key={item.name}>{totalScore(item.scores, item.bonus)}</td>)}</tr></tfoot>
           </table>

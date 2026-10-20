@@ -56,8 +56,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .die-scene { --die-size: 78px; position: relative; display: inline-block; flex: none; width: 84px; height: 132px; }
 .die-scene canvas { position: absolute; left: -50%; top: -30%; display: block; width: 200%; height: 160%; pointer-events: none; }
 .die-roll-placeholder { display: none; }
-.die-unrolled-mark { display: none; position: absolute; left: 50%; top: 50%; z-index: 1; transform: translate(-50%, -50%); color: var(--ink); font: 400 calc(var(--die-size) * .58)/1 var(--display); pointer-events: none; }
-.die-scene[data-ready="true"] > .die-unrolled-mark { display: block; }
 .die-css-renderer[data-unrolled="true"] .die-css-pip { visibility: hidden; }
 .play-card .die-scene > canvas, .play-card .die-scene > .die-css-renderer { filter: drop-shadow(0 7px 7px #2d344425); }
 .hold-caption { position: absolute; bottom: -5px; left: 0; width: 100%; color: var(--ink); font-size: 13px; line-height: 20px; font-weight: 600; opacity: 0; pointer-events: none; }
@@ -121,8 +119,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .subtotal-row td { text-align: center; font: 400 16px var(--display); }
 .subtotal-row .player-score-cell { background: var(--surface); }
 .score-summary-row { border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); background: transparent; }
+.score-summary-row > th, .score-summary-row > td { border-top: 1px solid var(--line-strong); }
 .score-summary-row .player-score-cell { background: var(--surface); }
-.score-table tfoot::before { content: ''; display: table-row; height: 12px; }
 .total-row { height: 54px; border-top: 1px solid var(--line); }
 .total-row th { padding: 0 9px; text-align: left; font: 400 34px/1.1 var(--display); }
 .total-row td { text-align: center; font: 500 25px/1.1 var(--display); }
