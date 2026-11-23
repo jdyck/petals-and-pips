@@ -1,9 +1,9 @@
 "use client";
 
-import { CaretRight, PlusCircle } from "@phosphor-icons/react";
+import { CaretRight, List } from "@phosphor-icons/react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import HomeScreenInstall from "./home-screen-install";
+import { useHomeScreenInstall } from "./home-screen-install";
 import GameLoading from "./game-loading";
 import { DiceMotionToggle, useDiceMotion } from "./dice-motion";
 import { useDeviceHighScore } from "./use-device-high-score";
@@ -133,6 +133,7 @@ function ScorecardPopup({ children, onClose }: { children: ReactNode; onClose: (
 
 export default function Game({ initialMode = "solo" }: { initialMode?: GameMode }) {
   const diceMotion = useDiceMotion();
+  const install = useHomeScreenInstall();
   const [state, dispatch] = useReducer(gameReducer, initialMode, createGame);
   // Keep the server and first client render identical, then pick the opening theme.
   const [theme, setTheme] = useState(DEFAULT_GAME_THEME);
@@ -170,6 +171,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     return () => media.removeEventListener("change", updateLayout);
   }, []);
   const [nextMode, setNextMode] = useState<GameMode>(initialMode);
+  const [playersWhoHeld, setPlayersWhoHeld] = useState<number[]>([]);
   const [surfaceColor, setSurfaceColor] = useState<string | null>(null);
   const [shadowDarkness, setShadowDarkness] = useState(Math.round(GAME_DICE_SHADING.shadowDarkness * 100));
   const diceShading = useMemo<DiceShading>(() => process.env.NODE_ENV === "development"
@@ -245,6 +247,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
 
   function startGame(mode: GameMode) {
     setTheme(randomGameTheme(theme.id));
+    setPlayersWhoHeld([]);
     dispatch({ type: "reset", mode });
     setSetupOpen(false);
     setAllScoresOpen(false);
@@ -306,8 +309,15 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
       <button className="header-button new-game-button" type="button" onClick={() => { setNextMode(state.mode); setSetupOpen(true); }}>New game</button>
       <h1 className="brand-name">Pips &amp; Petals</h1>
       <div className="topbar-right">
-        <HomeScreenInstall />
-        <button className="header-button" type="button" onClick={() => setHelpOpen(true)}>How to play</button>
+        <details className="mobile-menu" onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
+          <summary aria-label="Game menu"><List size={24} aria-hidden="true" /></summary>
+          <div className="mobile-menu-panel">
+            <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setNextMode(state.mode); setSetupOpen(true); }}>New game</button>
+            <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setHelpOpen(true); }}>How to play</button>
+            {install.showInstall && <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; install.openInstall(); }}>Install</button>}
+            <p className="mobile-menu-high-score">Device high score <span>{deviceHighScore ?? "—"}</span></p>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -321,7 +331,8 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
             {phase === "finished" ? <p className="turn-message match-result" aria-live="polite">{matchResult(players)}</p>
               : phase === "handoff" ? <p className="turn-message">Pass the device to {player.name}.</p>
                 : <div className="dice-display">
-                  <Dice values={dice.length ? dice : [1, 1, 1, 1, 1]} unrolled={!dice.length} held={held} onToggle={isBusy ? undefined : (index) => dispatch({ type: "hold", index })} disabled={!dice.length || rolling || !humanTurn || rollsLeft === 0} rolling={rolling} rollId={rollId} label={dice.length ? `${player.name}’s dice` : "Roll the dice to start"} animateWithReducedMotion={diceMotion.animateDice} shading={diceShading} onReadyChange={updateDieReady} />
+                  <Dice values={dice.length ? dice : [1, 1, 1, 1, 1]} unrolled={!dice.length} held={held} onToggle={isBusy ? undefined : (index) => { if (!held[index]) setPlayersWhoHeld((players) => players.includes(currentPlayer) ? players : [...players, currentPlayer]); dispatch({ type: "hold", index }); }} disabled={!dice.length || rolling || !humanTurn || rollsLeft === 0} rolling={rolling} rollId={rollId} label={dice.length ? `${player.name}’s dice` : "Roll the dice to start"} animateWithReducedMotion={diceMotion.animateDice} shading={diceShading} onReadyChange={updateDieReady} />
+                  {humanTurn && dice.length > 0 && rollsLeft > 0 && !rolling && !jokerChoice && player.scores.every((score) => score === null) && !playersWhoHeld.includes(currentPlayer) && <span className="hold-instruction">Select dice to hold</span>}
                 </div>}
           </div>
           <div className="play-actions">
@@ -347,10 +358,11 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
               <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
             </button>;
           })}
+          <button className="suggestion-card choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
+            <span className="suggestion-name">Choose another score</span>
+            <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
+          </button>
         </div>
-        <button className="choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
-          <PlusCircle size={30} weight="thin" aria-hidden="true" /><span>Choose another score</span>
-        </button>
         {jokerChoice && <p className="joker-choice-message" role="status">+100 bonus added. Choose an open category in the lower section of the scorecard.</p>}
         <div className="play-utilities">
           <DiceMotionToggle {...diceMotion} />
@@ -375,6 +387,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
       {!compactScorecard && scorecard}
     </section>
 
+    {install.dialog}
     {compactScorecard && scorecardOpen && <ScorecardPopup onClose={() => setScorecardOpen(false)}>{scorecard}</ScorecardPopup>}
 
     {allScoresOpen && <ScoreChoices options={scoreOptions} onChoose={chooseScore} onClose={() => setAllScoresOpen(false)} />}

@@ -4,12 +4,12 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { execFileSync } = require("node:child_process");
 const { test } = require("node:test");
-const ts = require("typescript");
+const { transpile } = require("./transpile.cjs");
 const three = import("three");
 
 function load(name, imports = {}, extraExports = "") {
   const source = fs.readFileSync(path.join(__dirname, `../app/lib/${name}.ts`), "utf8");
-  const compiled = ts.transpileModule(source + extraExports, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  const compiled = transpile(source + extraExports);
   const context = { exports: {}, require: (id) => imports[id] };
   vm.runInNewContext(compiled, context);
   return context.exports;

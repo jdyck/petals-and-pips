@@ -3,13 +3,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
-const ts = require("typescript");
+const { transpile } = require("./transpile.cjs");
 
 const themes = require("../public/bgs/themes.json");
 const context = { exports: {}, require: () => themes, Math: Object.create(Math) };
-vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, "../app/lib/game-themes.ts"), "utf8"), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
-}).outputText, context);
+vm.runInNewContext(transpile(fs.readFileSync(path.join(__dirname, "../app/lib/game-themes.ts"), "utf8")), context);
 const { randomGameTheme, gameThemeStyle } = context.exports;
 
 test("every supplied floral background has a theme and an optimized image", () => {

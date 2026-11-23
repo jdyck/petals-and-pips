@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-export default function HomeScreenInstall() {
+type InstallPromptEvent = Event & { prompt: () => Promise<unknown> };
+
+export function useHomeScreenInstall() {
   const [showInstall, setShowInstall] = useState(false);
   const [open, setOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [offlineReady, setOfflineReady] = useState(false);
   const [offlineUnavailable, setOfflineUnavailable] = useState(false);
 
@@ -16,6 +19,13 @@ export default function HomeScreenInstall() {
       || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const updateInstall = () => setShowInstall(isIOS && !iosNavigator.standalone && !displayMode.matches);
     updateInstall();
+    const capturePrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    const installed = () => { setInstallPrompt(null); setShowInstall(false); };
+    window.addEventListener("beforeinstallprompt", capturePrompt);
+    window.addEventListener("appinstalled", installed);
     displayMode.addEventListener("change", updateInstall);
 
     let cancelled = false;
@@ -47,14 +57,12 @@ export default function HomeScreenInstall() {
     return () => {
       cancelled = true;
       displayMode.removeEventListener("change", updateInstall);
+      window.removeEventListener("beforeinstallprompt", capturePrompt);
+      window.removeEventListener("appinstalled", installed);
     };
   }, []);
 
-  if (!showInstall) return null;
-
-  return <>
-    <button className="header-button install-button" type="button" onClick={() => setOpen(true)}>Install</button>
-    {open && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+  const dialog = open && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="install-title">
         <button className="modal-close" type="button" onClick={() => setOpen(false)} aria-label="Close install instructions">×</button>
         <h2 id="install-title">Add to Home Screen</h2>
@@ -71,6 +79,18 @@ export default function HomeScreenInstall() {
             : "Preparing offline play… Keep this page open until it is ready."}</p>
         <button className="rules-done" type="button" onClick={() => setOpen(false)}>Got it</button>
       </section>
-    </div>}
-  </>;
+    </div>;
+
+  return {
+    showInstall: showInstall || installPrompt !== null,
+    openInstall: () => {
+      if (installPrompt) {
+        void installPrompt.prompt();
+        setInstallPrompt(null);
+      } else {
+        setOpen(true);
+      }
+    },
+    dialog,
+  };
 }

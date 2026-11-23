@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
-const ts = require("typescript");
+const { transpile } = require("./transpile.cjs");
 
 function loader(decode) {
   const images = [];
@@ -14,9 +14,7 @@ function loader(decode) {
       decode() { return decode(this); }
     },
   };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, "../app/lib/game-loading.ts"), "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS },
-  }).outputText, context);
+  vm.runInNewContext(transpile(fs.readFileSync(path.join(__dirname, "../app/lib/game-loading.ts"), "utf8")), context);
   return { load: context.exports.loadGameBackground, images };
 }
 

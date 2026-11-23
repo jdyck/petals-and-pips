@@ -17,18 +17,20 @@
   ],
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
-    "next": "^16.0.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "three": "^0.186.1",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "three": "^0.187.0",
     "three-legacy": "npm:three@0.162.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@types/three": "^0.186.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
     "@types/three-legacy": "npm:@types/three@0.162.0",
-    "typescript": "^5.9.0"
-  }
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "pnpm@12.21.0"
 }

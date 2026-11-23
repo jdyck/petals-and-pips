@@ -143,14 +143,31 @@ export function rankScoreOptions(dice: number[], card: ScoreCard) {
       else if (category.id === "largeStraight") priority = 6;
       else if (category.id === "fiveKind") priority = 7;
     }
-    return { category, index, points, priority };
+    return { category, index, points, priority, bonusChasing: bonus.chasing };
   }).sort((a, b) => b.priority - a.priority || b.points - a.points || a.index - b.index);
 }
 
 export function selectScoreSuggestions(options: ReturnType<typeof rankScoreOptions>) {
-  const chance = options.find((option) => option.category.id === "chance");
-  const alternatives = options.filter((option) => option.category.id !== "chance").slice(0, 2);
-  if (!chance) return options.slice(0, 3);
+  const ranked = [...options];
+  // Compare upper-section choices by matching dice while the bonus is attainable.
+  // Keep their strategic priority and their positions relative to lower categories.
+  const upperPriorities = new Set(ranked.filter((option) => option.category.face && option.bonusChasing).map((option) => option.priority));
+  for (const priority of upperPriorities) {
+    const slots = ranked.flatMap((option, index) => option.category.face && option.bonusChasing && option.priority === priority ? [index] : []);
+    const upper = slots.map((index) => ranked[index]).sort((a, b) =>
+      b.points / b.category.face! - a.points / a.category.face! || b.points - a.points
+    );
+    slots.forEach((index, position) => { ranked[index] = upper[position]; });
+  }
+  const threeIndex = ranked.findIndex((option) => option.category.id === "threeKind" && option.points > 0);
+  const fourIndex = ranked.findIndex((option) => option.category.id === "fourKind" && option.points > 0);
+  if (threeIndex !== -1 && fourIndex > threeIndex) {
+    const [fourKind] = ranked.splice(fourIndex, 1);
+    ranked.splice(threeIndex, 0, fourKind);
+  }
+  const chance = ranked.find((option) => option.category.id === "chance");
+  const alternatives = ranked.filter((option) => option.category.id !== "chance").slice(0, 2);
+  if (!chance) return ranked.slice(0, 3);
   if (alternatives.every((option) => option.points === 0)) return [chance, ...alternatives];
   // Reserve the third slot even if only one other scoring category remains.
   return [alternatives[0], alternatives[1], chance];

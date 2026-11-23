@@ -3,10 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
-const ts = require("typescript");
+const { transpile } = require("./transpile.cjs");
 
 const source = fs.readFileSync(path.join(__dirname, "../app/lib/game.ts"), "utf8");
-const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const compiled = transpile(source);
 const context = { exports: {} };
 vm.runInNewContext(compiled, context);
 const { CATEGORIES, createGame, gameReducer, matchResult, playableCategoryIndices, totalScore, chooseAiCategory, rankScoreOptions, selectScoreSuggestions, aiTarget, aiHoldPlan } = context.exports;
@@ -491,4 +491,28 @@ test("used or unavailable Chance does not appear in the suggestions", () => {
   assert.ok(suggestions.every((option) => option.category.id !== "chance"));
   assert.deepEqual(suggestions, options.slice(0, 3));
   assert.equal(selectScoreSuggestions([]).length, 0);
+});
+
+
+test("four of a kind is suggested before three of a kind when both score", () => {
+  const card = Array(13).fill(null);
+  const dice = [4, 4, 4, 4, 2];
+  let suggestions = selectScoreSuggestions(rankScoreOptions(dice, card));
+  assert.equal(suggestions[0].category.id, "fours");
+  assert.equal(suggestions[1].category.id, "fourKind");
+  card[12] = 0; // Chance is unavailable, leaving room for both kinds.
+  suggestions = selectScoreSuggestions(rankScoreOptions(dice, card));
+  assert.deepEqual(Array.from(suggestions, (option) => option.category.id), ["fours", "fourKind", "threeKind"]);
+});
+
+
+test("upper suggestions favor matching dice while chasing the bonus", () => {
+  const card = Array(13).fill(null);
+  let suggestions = selectScoreSuggestions(rankScoreOptions([1, 1, 1, 5, 6], card));
+  assert.equal(suggestions[0].category.id, "ones");
+  suggestions = selectScoreSuggestions(rankScoreOptions([1, 1, 5, 6, 4], card));
+  assert.equal(suggestions[0].category.id, "ones");
+  const shortfall = [1, 6, 9, 12, 15, null, null, null, null, null, null, null, null];
+  suggestions = selectScoreSuggestions(rankScoreOptions([6, 6, 6, 6, 2], shortfall));
+  assert.equal(suggestions[0].category.id, "sixes");
 });

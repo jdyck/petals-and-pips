@@ -5,8 +5,8 @@ A five-dice game built with the Next.js App Router. Play thirteen scoring catego
 ## Run locally
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open <http://localhost:3000> to play solo. Use **New game** to choose **1 player · no opponent**, a computer opponent, or two, three, or four local players. Solo turns continue immediately after scoring, and the game shows your final score after all thirteen categories are filled. Open <http://localhost:3000/pass-and-play> to start a four-player local game directly. Multiplayer local turns pause until the next player taps **Ready**. Use **How to play** in the header for the turn rules and scoring overview.
@@ -15,7 +15,7 @@ Scoring suggestions and the computer favor three matching dice in Ones through S
 
 Your first **Five of a kind** automatically scores 50 and ends the turn. Each additional five of a kind automatically adds +100, and bonuses keep accumulating. The game also scores the matching upper category if it is open. If that box is filled, tap **Choose a category** on the celebration, then choose an open lower category on the scorecard using joker scoring (Full house: 25, Small straight: 30, Large straight: 40; other lower categories: dice total). The bonus is already added, and you cannot reroll while choosing. If the lower section is full, the game automatically fills an open upper category. The computer chooses its own category. Scoring zero in Five of a kind disables repeat bonuses.
 
-In development (`npm run dev`), open **Dev mode** below the dice controls to change **Dice surface** live (default: `#ffffff`). Dark colors automatically use white pips; lighter colors use dark pips. Adjust **Shadow darkness** from 0–100% (starting at 25%) to lighten or darken the shaded sides independently of the surface color. Both controls apply to all dice, including celebrations, for the current page session. **Reset dice appearance** restores the original color and shadows. Use **Roll five of a kind** to test the automatic score and celebration. It releases held dice and rolls five matching faces using the normal animation. The roll button is unavailable during computer turns, handoffs, and rolls. Dev controls are omitted from production builds.
+In development (`pnpm dev`), open **Dev mode** below the dice controls to change **Dice surface** live (default: `#ffffff`). Dark colors automatically use white pips; lighter colors use dark pips. Adjust **Shadow darkness** from 0–100% (starting at 25%) to lighten or darken the shaded sides independently of the surface color. Both controls apply to all dice, including celebrations, for the current page session. **Reset dice appearance** restores the original color and shadows. Use **Roll five of a kind** to test the automatic score and celebration. It releases held dice and rolls five matching faces using the normal animation. The roll button is unavailable during computer turns, handoffs, and rolls. Dev controls are omitted from production builds.
 
 Open <http://localhost:3000/dice-prototype> for the enlarged 3D die preview. Roll a random result or use the six face buttons to inspect each landing. The Three.js model has rounded edges, concave pip meshes, a white physical material, environment reflections, and real lighting. The dice sit on a darker gray tray without cast shadows. Move the light slider to inspect the curved edges. Use **Dice appearance** to compare **Original 3D** and **Lighter 3D**. Adjust **Frame rate limit** from 10 to 60 FPS (starting at 30) to compare smoothness and rendering load, including during a roll. This is a cap, so slower devices may render fewer frames; the roll duration and landing stay the same. The cap applies only to the prototype. The same models and rolling animation run in the game; held dice stay still on rerolls. Reduced-motion preferences skip the animation.
 
@@ -38,8 +38,8 @@ Update the iPad to the latest iPadOS 15 update available in **Settings → Gener
 Serve a production build over **HTTPS**:
 
 ```bash
-npm run build
-npm start
+pnpm build
+pnpm start
 ```
 
 Use an HTTPS host or HTTPS reverse proxy in front of the server. Opening an HTTP LAN address (such as `http://192.168.1.10:3000`) on the iPad does not enable service workers or offline play. The development server does not register the offline worker.

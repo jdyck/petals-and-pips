@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
-const ts = require("typescript");
+const { transpile } = require("./transpile.cjs");
 
 function simulateRoll({ fpsLimit = 0, reducedMotion = false, frameTimes, unrolled = false, rolling = true, visibilityChanges = new Map() } = {}) {
   const effects = [];
@@ -29,9 +29,7 @@ function simulateRoll({ fpsLimit = 0, reducedMotion = false, frameTimes, unrolle
     render: (pose) => draws.push({ time: now, pose }),
   };
   const diceContext = { exports: {} };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, "../app/lib/dice.ts"), "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS },
-  }).outputText, diceContext);
+  vm.runInNewContext(transpile(fs.readFileSync(path.join(__dirname, "../app/lib/dice.ts"), "utf8")), diceContext);
   const imports = {
     react: { useRef: (current) => ({ current }), useEffect: (effect) => effects.push(effect) },
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
@@ -46,9 +44,7 @@ function simulateRoll({ fpsLimit = 0, reducedMotion = false, frameTimes, unrolle
     requestAnimationFrame: (callback) => { pending.set(++frameId, callback); return frameId; },
     cancelAnimationFrame: (id) => pending.delete(id),
   };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, "../app/components/rolling-die.tsx"), "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText, context);
+  vm.runInNewContext(transpile(fs.readFileSync(path.join(__dirname, "../app/components/rolling-die.tsx"), "utf8")), context);
   const element = context.exports.RollingDie({ value: 6, rolling, rollId: 1, fpsLimit, unrolled, onReadyChange: (ready) => readiness.push({ ready, drawCount: draws.length }) });
   element.props.ref.current = host;
   const cleanups = effects.map((effect) => effect());
