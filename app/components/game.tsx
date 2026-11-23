@@ -358,10 +358,10 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
               <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
             </button>;
           })}
-          <button className="suggestion-card choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
+          {suggestions.filter(Boolean).length === 3 ? <button className="suggestion-card choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
             <span className="suggestion-name">Choose another score</span>
             <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
-          </button>
+          </button> : <div className="suggestion-card choose-score-button" aria-hidden="true" />}
         </div>
         {jokerChoice && <p className="joker-choice-message" role="status">+100 bonus added. Choose an open category in the lower section of the scorecard.</p>}
         <div className="play-utilities">
