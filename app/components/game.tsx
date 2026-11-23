@@ -131,6 +131,17 @@ function ScorecardPopup({ children, onClose }: { children: ReactNode; onClose: (
   </dialog>;
 }
 
+function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnType<typeof rankScoreOptions>[number] | undefined; onChoose: (index: number) => void }) {
+  const [previous, setPrevious] = useState(suggestion);
+  useEffect(() => { if (suggestion) setPrevious(suggestion); }, [suggestion?.category.id, suggestion?.points, suggestion?.index]);
+  const displayed = suggestion ?? previous;
+  return <button className="suggestion-card" type="button" disabled={!suggestion} aria-hidden={!suggestion || undefined} onClick={() => { if (suggestion) onChoose(suggestion.index); }} aria-label={suggestion ? `Score ${suggestion.points} points in ${suggestion.category.label}` : undefined}>
+    <span className={`suggestion-content${suggestion ? " is-visible" : ""}`}>
+      {displayed && <><span className="suggestion-name">{displayed.category.label}</span><span className="suggestion-points">{displayed.points}<span> pts</span></span><CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" /></>}
+    </span>
+  </button>;
+}
+
 export default function Game({ initialMode = "solo" }: { initialMode?: GameMode }) {
   const diceMotion = useDiceMotion();
   const install = useHomeScreenInstall();
@@ -348,22 +359,14 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
 
         <div className="scoring-heading"><span>{phase === "finished" ? "A lovely game, well played" : phase === "handoff" ? "A fresh turn awaits" : canScore ? "Tap a card to score" : isBusy ? `${player.name}’s turn` : rolling ? "Rolling…" : "Roll to find your next score"}</span></div>
         <div className="score-suggestions" aria-label="Suggested scores">
-          {Array.from({ length: 3 }, (_, position) => {
-            const suggestion = suggestions[position];
-            if (!suggestion) return <div className="suggestion-card" key={`empty-${position}`} aria-hidden="true" />;
-            const { category, index, points } = suggestion;
-            return <button className="suggestion-card" type="button" key={category.id} onClick={() => chooseScore(index)} aria-label={`Score ${points} points in ${category.label}`}>
-              <span className="suggestion-name">{category.label}</span>
-              <span className="suggestion-points">{points}<span> pts</span></span>
+          {Array.from({ length: 3 }, (_, position) => <SuggestedScore key={position} suggestion={suggestions[position]} onChoose={chooseScore} />)}
+          <button className="suggestion-card choose-score-button" type="button" disabled={suggestions.filter(Boolean).length !== 3} aria-hidden={suggestions.filter(Boolean).length !== 3 || undefined} onClick={() => setAllScoresOpen(true)}>
+            <span className={`suggestion-content${suggestions.filter(Boolean).length === 3 ? " is-visible" : ""}`}>
+              <span className="suggestion-name">Choose another score</span>
               <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
-            </button>;
-          })}
-          {suggestions.filter(Boolean).length === 3 ? <button className="suggestion-card choose-score-button" type="button" disabled={!canScore} onClick={() => setAllScoresOpen(true)}>
-            <span className="suggestion-name">Choose another score</span>
-            <CaretRight className="suggestion-arrow" size={24} weight="thin" aria-hidden="true" />
-          </button> : <div className="suggestion-card choose-score-button" aria-hidden="true" />}
+            </span>
+          </button>
         </div>
-        {jokerChoice && <p className="joker-choice-message" role="status">+100 bonus added. Choose an open category in the lower section of the scorecard.</p>}
         <div className="play-utilities">
           <DiceMotionToggle {...diceMotion} />
           {process.env.NODE_ENV === "development" && <details className="dev-controls">

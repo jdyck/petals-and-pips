@@ -27,7 +27,7 @@ button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
 .game-viewport { display: flex; min-height: 100vh; min-height: 100svh; color: var(--ink); touch-action: pan-x pan-y; }
-.game-wrapper { width: 1024px; max-width: 100%; height: 768px; margin: auto; overflow: auto; background: var(--paper); }
+.game-wrapper { width: 1024px; max-width: 100%; height: auto; margin: auto; overflow: visible; background: var(--paper); }
 .game-wrapper.is-loading { visibility: hidden; }
 .game-wrapper.is-loading .play-card { background-image: none; }
 .game-loading { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; color: var(--ink); background: var(--paper); }
@@ -83,9 +83,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .play-actions > .roll-count { font-weight: 600; }
 .scoring-heading { display: flex; align-items: center; gap: 18px; margin: 18px 0 12px; color: var(--ink); font-size: 11px; letter-spacing: 2.5px; text-align: center; text-transform: uppercase; white-space: nowrap; }
 .scoring-heading::before, .scoring-heading::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.score-suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; min-height: 135px; }
+.score-suggestions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 135px 72px; gap: 15px; min-height: 0; }
 .suggestion-card { position: relative; min-width: 0; min-height: 135px; padding: 18px 24px 30px; border: 0; border-radius: 2px; background: var(--suggestion-surface); color: var(--ink); text-align: left; cursor: pointer; }
 .suggestion-card:disabled, .suggestion-card[aria-hidden="true"] { cursor: default; }
+.suggestion-content { display: block; opacity: 0; transition: opacity 160ms ease; }
+.suggestion-content.is-visible { opacity: 1; }
 .suggestion-name { display: block; min-height: 28px; font: 400 22px/1.1 var(--display); letter-spacing: -.6px; white-space: nowrap; }
 .suggestion-points { display: block; margin-top: 5px; font: 400 46px/1.05 var(--display); letter-spacing: -2px; white-space: nowrap; }
 .suggestion-points > span { letter-spacing: -2px; }
@@ -93,8 +95,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .score-suggestions .choose-score-button { grid-column: 1 / -1; display: flex; align-items: center; min-height: 72px; padding: 18px 64px 18px 30px; }
 .choose-score-button .suggestion-name { min-height: 0; font-size: clamp(22px, 5vw, 28px); line-height: 1.2; letter-spacing: -.3px; white-space: normal; }
 .choose-score-button .suggestion-arrow { top: 50%; right: 30px; bottom: auto; transform: translateY(-50%); }
-.choose-score-button:disabled { opacity: .6; cursor: default; }
-.live-status { margin: 7px 0 0; min-height: 18px; color: var(--muted); font-size: 11px; text-align: center; }
+.choose-score-button:disabled { cursor: default; }
+.live-status { margin: 7px 0 0; min-height: 54px; color: var(--muted); font-size: 11px; text-align: center; }
 .play-utilities { display: flex; align-items: center; justify-content: center; gap: 20px; min-height: 16px; margin-top: 12px; }
 .dice-motion-toggle { display: flex; align-items: center; gap: 8px; min-height: 32px; color: var(--ink-soft); font-size: 11px; cursor: pointer; }
 .dice-motion-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--ink); }
@@ -108,7 +110,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .dev-dice-shadow { display: grid; gap: 4px; color: var(--ink); }
 .dev-dice-shadow > span { display: flex; justify-content: space-between; gap: 12px; }
 .dev-dice-shadow input { width: 100%; min-height: 32px; margin: 0; accent-color: var(--ink); cursor: pointer; }
-.joker-choice-message { margin: 12px 0; padding: 10px; background: var(--surface); font-size: 12px; }
 
 .scoreboard-card { min-width: 0; }
 .scorecard-title { margin: -3px 0 5px 4px; font: 400 44px/1.1 var(--display); letter-spacing: -1.5px; }
@@ -242,7 +243,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
   .roll-button { font-size: 11px; letter-spacing: 2px; }
   .suggestion-card { min-height: 120px; padding: 16px 10px 30px; }
   .suggestion-arrow { top: 66px; }
-  .score-suggestions { min-height: 120px; gap: 10px; }
+  .score-suggestions { grid-template-rows: 120px 68px; min-height: 0; gap: 10px; }
   .suggestion-name { font-size: 17px; letter-spacing: -.6px; }
   .suggestion-points { font-size: 34px; }
   .choose-score-button { gap: 12px; }
@@ -298,4 +299,22 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 @media (max-width: 420px) {
   .score-suggestions .choose-score-button { min-height: 68px; padding: 16px 56px 16px 24px; }
   .choose-score-button .suggestion-arrow { right: 24px; }
+}
+
+/* Keep the installed phone game within the screen while leaving dialogs scrollable. */
+@media (display-mode: standalone) and (max-width: 699px) and (min-height: 700px) {
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .game-viewport { height: 100%; min-height: 0; overflow: hidden; }
+  .game-wrapper { height: 100%; min-height: 0; overflow: auto; }
+  .page-shell { height: 100%; min-height: 0; padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .game-layout { margin-top: 8px; }
+  .play-card { height: clamp(215px, 31svh, 250px); padding-top: 12px; padding-bottom: 12px; gap: 6px; }
+  .scoring-heading { margin: 8px 0; }
+  .score-suggestions { grid-template-rows: 100px 58px; gap: 8px; min-height: 0; }
+  .suggestion-card { min-height: 100px; padding-top: 12px; padding-bottom: 14px; }
+  .suggestion-arrow { top: 60px; }
+  .score-suggestions .choose-score-button { min-height: 58px; padding-top: 12px; padding-bottom: 12px; }
+  .play-utilities { margin-top: 4px; }
+  .live-status { margin-top: 2px; }
+  .scorecard-toggle { margin-top: 6px; }
 }
