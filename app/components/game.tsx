@@ -167,6 +167,15 @@ export function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnTyp
 export default function Game({ initialMode = "solo", initialState, initialTheme, online }: { initialMode?: GameMode; initialState?: GameState; initialTheme?: GameTheme; online?: { state: GameState; seat: number; count: number; forfeited: boolean; busy: boolean; rolling: boolean; act: (action: "roll" | "hold" | "score", index?: number) => void; leave: () => void; opponent: string } }) {
   const { isLoaded, isSignedIn } = useUser();
   const { openUserProfile } = useClerk();
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function dismissMenu(event: PointerEvent) {
+      const menu = menuRef.current;
+      if (menu && !menu.contains(event.target as Node)) menu.open = false;
+    }
+    document.addEventListener("pointerdown", dismissMenu);
+    return () => document.removeEventListener("pointerdown", dismissMenu);
+  }, []);
   const diceMotion = useDiceMotion();
   const install = useHomeScreenInstall();
   const [localState, dispatch] = useReducer(gameReducer, initialMode, mode => initialState ?? createGame(mode));
@@ -365,7 +374,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
       <button className="header-button new-game-button" type="button" onClick={() => { if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
       <h1 className="brand-name">Pips &amp; Petals</h1>
       <div className="topbar-right">
-        <details className="mobile-menu" onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
+        <details ref={menuRef} className="mobile-menu" onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
           <summary aria-label="Game menu"><List size={24} aria-hidden="true" /></summary>
           <div className="mobile-menu-panel">
             <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
