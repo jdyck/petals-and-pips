@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import OnlineGameView from "./online-game-view";
 import GameLoading from "./game-loading";
 
-export default function OnlinePage({ view, embedded = false }: { view: "leaderboard" | "game"; embedded?: boolean }) {
+export default function OnlinePage({ view, embedded = false, onSignIn }: { view: "leaderboard" | "game"; embedded?: boolean; onSignIn?: () => void }) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return view === "game" ? <GameLoading /> : <main className="online-page">Loading…</main>;
-  if (!isSignedIn) return <main className="online-page">{!embedded && <a href="/">← Back to game</a>}<h1>{view === "leaderboard" ? "Leaderboard" : "Two-player online game"}</h1><p>Sign in with your Appfun Games account to {view === "leaderboard" ? "view the leaderboard" : "play online"}.</p><SignInButton mode="modal"><button>Sign in or create an account</button></SignInButton></main>;
+  if (!isSignedIn) return <main className="online-page">{!embedded && <a href="/">← Back to game</a>}<h1>{view === "leaderboard" ? "Leaderboard" : "Two-player online game"}</h1><p>Sign in with your Appfun Games account to {view === "leaderboard" ? "view the leaderboard" : "play online"}.</p>{onSignIn ? <button type="button" onClick={onSignIn}>Sign in or create an account</button> : <SignInButton mode="modal"><button>Sign in or create an account</button></SignInButton>}</main>;
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) return <main className="online-page">Online play is not configured. {!embedded && <a href="/">Back to game</a>}</main>;
   return <Online view={view} embedded={embedded} />;
 }

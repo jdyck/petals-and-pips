@@ -22,6 +22,7 @@ function SignedInLobby() {
   const challenge = useMutation(api.lobby.challenge);
   const respond = useMutation(api.lobby.respond);
   const dismiss = useMutation(api.lobby.dismiss);
+  const updateScoreName = useMutation(api.play.updateScoreName);
   const lobby = useQuery(api.lobby.list, isAuthenticated && name ? {} : "skip");
   useEffect(() => {
     fetch("/api/screen-name").then(async response => { if (!response.ok) throw new Error("Could not load your Appfun profile."); return response.json(); }).then(data => { setName(data.screenName || ""); setInput(data.screenName || ""); }).catch(() => setError("Could not load your Appfun profile."));
@@ -41,7 +42,7 @@ function SignedInLobby() {
   }, [lobby]);
   async function run(action: () => Promise<unknown>) { if (busy) return; setBusy(true); setError(""); try { await action(); } catch (e) { setError(e instanceof Error ? e.message : "Something went wrong."); } finally { setBusy(false); } }
   if (name === null) return <>{error ? <p role="alert">{error}</p> : <p>Loading your profile…</p>}</>;
-  if (!name) return <><p>Choose a screen name for your Appfun Games account.</p><form className="online-lobby-form" onSubmit={event => { event.preventDefault(); void run(async () => { const response = await fetch("/api/screen-name", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({screenName: input})}); const data = await response.json(); if (!response.ok) throw new Error(data.error); setName(data.screenName); }); }}><label htmlFor="lobby-name">Screen name</label><input id="lobby-name" maxLength={24} value={input} onChange={event => setInput(event.target.value)} /><button className="rules-done" type="submit" disabled={busy}>Save screen name</button></form>{error && <p role="alert">{error}</p>}</>;
+  if (!name) return <><p>Choose a screen name for your Appfun Games account.</p><form className="online-lobby-form" onSubmit={event => { event.preventDefault(); void run(async () => { const response = await fetch("/api/screen-name", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({screenName: input})}); const data = await response.json(); if (!response.ok) throw new Error(data.error); if (isAuthenticated) await updateScoreName({name: data.screenName}); setName(data.screenName); }); }}><label htmlFor="lobby-name">Screen name</label><input id="lobby-name" maxLength={24} value={input} onChange={event => setInput(event.target.value)} /><button className="rules-done" type="submit" disabled={busy}>Save screen name</button></form>{error && <p role="alert">{error}</p>}</>;
   if (!isAuthenticated) return <p>Connecting to online games…</p>;
   return <><p>Playing as <strong>{name}</strong></p>{error && <p role="alert">{error}</p>}
     <div className="online-lobby-players"><h3>Players in the lobby</h3>{!lobby ? <p>Finding players…</p> : lobby.players.length === 0 ? <p>No other players here yet. Stay in the lobby while a friend joins.</p> : lobby.players.map(player => <div className="online-lobby-player" key={player.userId}><span>{player.name}</span><button className="header-button" type="button" disabled={busy || lobby.outgoing.some(c => c.status === "pending")} onClick={() => void run(() => challenge({to: player.userId}))}>Challenge</button></div>)}</div>

@@ -93,3 +93,15 @@ test("finished local scores get a date and can replace an undated matching impor
   await alice.mutation(api.play.submitLocal, {name: "Alice", score: 100});
   expect((await alice.query(api.play.leaders, {}))[0].score).toBe(200);
 });
+
+test("device imports keep the highest account score and its name", async () => {
+  const t = convexTest(schema, modules);
+  const alice = t.withIdentity({subject: "alice"});
+  await expect(t.mutation(api.play.importDevice, {name: "Player", score: 200})).rejects.toThrow();
+  await alice.mutation(api.play.importDevice, {name: "Alice", score: 200});
+  await alice.mutation(api.play.importDevice, {name: "Player", score: 150});
+  expect(await alice.query(api.play.myScore, {})).toBe(200);
+  await alice.mutation(api.play.importDevice, {name: "Player", score: 250});
+  expect(await alice.query(api.play.myScore, {})).toBe(250);
+  expect((await alice.query(api.play.leaders, {}))[0].name).toBe("Alice");
+});

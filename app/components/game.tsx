@@ -74,6 +74,7 @@ export function Dice({ values, held, onToggle, disabled, unrolled = false, rolli
 
 function LeaderboardPopup({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const { openSignIn } = useClerk();
   useEffect(() => {
     const modal = dialog.current;
     modal?.showModal();
@@ -81,7 +82,7 @@ function LeaderboardPopup({ onClose }: { onClose: () => void }) {
   }, []);
   return <dialog ref={dialog} className="rules-modal leaderboard-modal" aria-label="Leaderboard" onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <button className="modal-close" type="button" autoFocus onClick={onClose} aria-label="Close leaderboard">×</button>
-    <OnlinePage view="leaderboard" embedded />
+    <OnlinePage view="leaderboard" embedded onSignIn={() => { dialog.current?.close(); onClose(); openSignIn(); }} />
   </dialog>;
 }
 
