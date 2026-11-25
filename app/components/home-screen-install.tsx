@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { removeDevelopmentServiceWorker } from "../lib/development-service-worker";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<unknown> };
 
@@ -29,6 +30,9 @@ export function useHomeScreenInstall() {
     displayMode.addEventListener("change", updateInstall);
 
     let cancelled = false;
+    if (process.env.NODE_ENV === "development" && "serviceWorker" in navigator) {
+      void removeDevelopmentServiceWorker(navigator.serviceWorker, window.location.origin, () => window.location.reload()).catch(() => {});
+    }
     if (process.env.NODE_ENV === "production" && window.isSecureContext && "serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
         .then(async (registration) => {

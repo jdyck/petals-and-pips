@@ -50,3 +50,9 @@ Use an HTTPS host or HTTPS reverse proxy in front of the server. Opening an HTTP
 4. Open **Pips & Petals** from the Home Screen once while online, then it can launch and play offline.
 
 The installed app opens without Safari's toolbar, with a dice icon. Solo, computer, and two-to-four-player games work offline after setup; the separate 3D dice prototype is not precached. Scores last for the current session and reset if the app reloads. Before deploying a new build, bump `CACHE_NAME` in `public/sw.js` so installed apps download the new complete offline shell.
+
+### Online play (development)
+
+The development deployment uses the shared Appfun Games Clerk application and a Convex deployment. The `appfunScreenName` field in Clerk public metadata is the shared account profile field; other Appfun games must read that same field to use it. Set `NEXT_PUBLIC_CONVEX_URL`, the Clerk keys, and `CLERK_JWT_ISSUER_DOMAIN` on the Convex deployment, and enable Clerk's `convex` JWT template. Production requires its own Clerk issuer and Convex deployment.
+
+The online page supports lobby challenges and stores a player's best score. Existing device records have no recorded date or owner, and imports are self-reported. They cannot be independently verified. The current implementation is a development prototype: score claims and screen-name snapshots are accepted from the client, and local scores are submitted by the player and are not independently verified; temporary account switching and end-to-end multiplayer testing still need work before launch.

@@ -1,5 +1,5 @@
 // Bump this version when deploying a new build so its entire shell is cached.
-const CACHE_NAME = "pips-and-petals-shell-v16";
+const CACHE_NAME = "pips-and-petals-shell-v17";
 const APP_ROOT = "/";
 const APP_ROUTES = [APP_ROOT, "/pass-and-play"];
 

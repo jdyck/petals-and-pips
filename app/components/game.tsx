@@ -1,32 +1,40 @@
 "use client";
 
+import { SignInButton, SignOutButton, useClerk, useUser } from "@clerk/nextjs";
 import { CaretRight, List } from "@phosphor-icons/react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import OnlinePage from "./online-page";
+import { OnlineLobby } from "./online-lobby";
 import { useHomeScreenInstall } from "./home-screen-install";
 import GameLoading from "./game-loading";
 import { DiceMotionToggle, useDiceMotion } from "./dice-motion";
+import { SubmitScore } from "./submit-score";
+import { HighScore } from "./high-score";
 import { useDeviceHighScore } from "./use-device-high-score";
 import { ROLL_DURATION, RollingDie } from "./rolling-die";
 import { DEFAULT_DICE_SHADING } from "../lib/dice-shading";
 import type { DiceShading } from "../lib/dice-shading";
 import { dicePipColor } from "../lib/dice";
 import { DEFAULT_GAME_THEME, gameThemeStyle, randomGameTheme } from "../lib/game-themes";
+import type { GameTheme } from "../lib/game-themes";
+import type { GameState } from "../lib/game";
 import { loadGameBackground } from "../lib/game-loading";
 
 import { CATEGORIES, aiHoldPlan, aiTarget, chooseAiCategory, createGame, gameReducer, matchResult, rankScoreOptions, rollDie, rollFive, selectScoreSuggestions, totalScore, upperSubtotal } from "../lib/game";
 import type { Category, FiveKindCelebration, GameMode } from "../lib/game";
 
 const GAME_DICE_SHADING = DEFAULT_DICE_SHADING;
-const GAME_MODES: { mode: GameMode; title: string; description: string }[] = [
+export const GAME_MODES: { mode: GameMode | "online2"; title: string; description: string }[] = [
   { mode: "solo", title: "1 player", description: "No opponent" },
   { mode: "local2", title: "2 players", description: "Pass the device" },
+  { mode: "online2", title: "2 players online", description: "Play on separate devices" },
   { mode: "local3", title: "3 players", description: "Pass the device" },
   { mode: "local4", title: "4 players", description: "Pass the device" },
   { mode: "computer", title: "1 player vs computer", description: "Play against the computer" },
 ];
 
-function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = false, rollId = 0, label = "Your dice", animateWithReducedMotion = false, shading = GAME_DICE_SHADING, onReadyChange }: {
+export function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = false, rollId = 0, label = "Your dice", animateWithReducedMotion = false, shading = GAME_DICE_SHADING, onReadyChange }: {
   values: number[];
   held?: boolean[];
   onToggle?: (index: number) => void;
@@ -64,6 +72,19 @@ function Dice({ values, held, onToggle, disabled, unrolled = false, rolling = fa
   );
 }
 
+function LeaderboardPopup({ onClose }: { onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const modal = dialog.current;
+    modal?.showModal();
+    return () => modal?.close();
+  }, []);
+  return <dialog ref={dialog} className="rules-modal leaderboard-modal" aria-label="Leaderboard" onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <button className="modal-close" type="button" autoFocus onClick={onClose} aria-label="Close leaderboard">×</button>
+    <OnlinePage view="leaderboard" embedded />
+  </dialog>;
+}
+
 function Celebration({ award, onContinue, shading }: { award: FiveKindCelebration; onContinue: () => void; shading: DiceShading }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -82,7 +103,7 @@ function Celebration({ award, onContinue, shading }: { award: FiveKindCelebratio
   </dialog>;
 }
 
-function ScoreChoices({ options, onChoose, onClose }: {
+export function ScoreChoices({ options, onChoose, onClose }: {
   options: { category: Category; index: number; points: number }[];
   onChoose: (index: number) => void;
   onClose: () => void;
@@ -103,7 +124,7 @@ function ScoreChoices({ options, onChoose, onClose }: {
   </dialog>;
 }
 
-function ScorecardPopup({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+export function ScorecardPopup({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const modal = dialog.current!;
@@ -131,7 +152,7 @@ function ScorecardPopup({ children, onClose }: { children: ReactNode; onClose: (
   </dialog>;
 }
 
-function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnType<typeof rankScoreOptions>[number] | undefined; onChoose: (index: number) => void }) {
+export function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnType<typeof rankScoreOptions>[number] | undefined; onChoose: (index: number) => void }) {
   const [previous, setPrevious] = useState(suggestion);
   useEffect(() => { if (suggestion) setPrevious(suggestion); }, [suggestion?.category.id, suggestion?.points, suggestion?.index]);
   const displayed = suggestion ?? previous;
@@ -142,19 +163,23 @@ function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnType<typeo
   </button>;
 }
 
-export default function Game({ initialMode = "solo" }: { initialMode?: GameMode }) {
+export default function Game({ initialMode = "solo", initialState, initialTheme, online }: { initialMode?: GameMode; initialState?: GameState; initialTheme?: GameTheme; online?: { state: GameState; seat: number; count: number; forfeited: boolean; busy: boolean; rolling: boolean; act: (action: "roll" | "hold" | "score", index?: number) => void; leave: () => void; opponent: string } }) {
+  const { isLoaded, isSignedIn } = useUser();
+  const { openUserProfile } = useClerk();
   const diceMotion = useDiceMotion();
   const install = useHomeScreenInstall();
-  const [state, dispatch] = useReducer(gameReducer, initialMode, createGame);
+  const [localState, dispatch] = useReducer(gameReducer, initialMode, mode => initialState ?? createGame(mode));
+  const state = online?.state ?? localState;
   // Keep the server and first client render identical, then pick the opening theme.
-  const [theme, setTheme] = useState(DEFAULT_GAME_THEME);
-  const [themeChosen, setThemeChosen] = useState(false);
-  const [loadedBackground, setLoadedBackground] = useState<string | null>(null);
+  const [theme, setTheme] = useState(initialTheme ?? DEFAULT_GAME_THEME);
+  const [themeChosen, setThemeChosen] = useState(!!initialTheme);
+  const [loadedBackground, setLoadedBackground] = useState<string | null>(initialTheme?.background ?? null);
+  const [continuingOnline, setContinuingOnline] = useState(!!initialState);
   const [backgroundError, setBackgroundError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [readyDice, setReadyDice] = useState([false, false, false, false, false]);
   useEffect(() => {
-    setTheme(randomGameTheme());
+    if (!initialTheme) setTheme(randomGameTheme());
     setThemeChosen(true);
   }, []);
   useEffect(() => {
@@ -167,7 +192,15 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     return () => { cancelled = true; };
   }, [theme.background, themeChosen, loadAttempt]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [lobbyOpen, setLobbyOpen] = useState(false);
+  useEffect(() => {
+    if (sessionStorage.getItem("pips-open-lobby") === "1") {
+      sessionStorage.removeItem("pips-open-lobby");
+      setLobbyOpen(true);
+    }
+  }, []);
   const [allScoresOpen, setAllScoresOpen] = useState(false);
   const [compactScorecard, setCompactScorecard] = useState(false);
   const [scorecardOpen, setScorecardOpen] = useState(false);
@@ -181,23 +214,33 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     media.addEventListener("change", updateLayout);
     return () => media.removeEventListener("change", updateLayout);
   }, []);
-  const [nextMode, setNextMode] = useState<GameMode>(initialMode);
+  const [nextMode, setNextMode] = useState<GameMode | "online2">(initialMode);
+  useEffect(() => {
+    const mode = sessionStorage.getItem("pips-new-mode");
+    sessionStorage.removeItem("pips-new-mode");
+    if (mode && GAME_MODES.some(item => item.mode === mode && mode !== "online2")) {
+      dispatch({ type: "reset", mode: mode as GameMode });
+      setNextMode(mode as GameMode);
+    }
+  }, []);
   const [playersWhoHeld, setPlayersWhoHeld] = useState<number[]>([]);
   const [surfaceColor, setSurfaceColor] = useState<string | null>(null);
   const [shadowDarkness, setShadowDarkness] = useState(Math.round(GAME_DICE_SHADING.shadowDarkness * 100));
   const diceShading = useMemo<DiceShading>(() => process.env.NODE_ENV === "development"
     ? { ...GAME_DICE_SHADING, ...(surfaceColor ? { surfaceColor, topWhite: 1, shadowTint: surfaceColor === GAME_DICE_SHADING.surfaceColor ? GAME_DICE_SHADING.shadowTint : surfaceColor } : {}), shadowDarkness: shadowDarkness / 100 }
     : GAME_DICE_SHADING, [surfaceColor, shadowDarkness]);
-  const { players, currentPlayer, phase, dice, held, rollsLeft, rolling, rollId, status, celebration, jokerChoice } = state;
-  const deviceHighScore = useDeviceHighScore(players, phase === "finished");
+  const { players, currentPlayer, phase, dice, held, rollsLeft, rollId, celebration, jokerChoice } = state;
+  const rolling = online ? online.rolling : state.rolling;
+  const onlineTurn = !online || (!online.forfeited && online.count === 2 && online.seat === currentPlayer && !online.busy);
+  const deviceHighScore = useDeviceHighScore(players, !online && phase === "finished");
   const player = players[currentPlayer];
-  const isBusy = phase === "computer";
-  const humanTurn = phase === "ready" || phase === "playing";
+  const isBusy = phase === "computer" || !onlineTurn;
+  const humanTurn = onlineTurn && (phase === "ready" || phase === "playing" || (!!online && phase === "handoff"));
   const diceVisible = phase !== "handoff" && phase !== "finished";
-  const loading = !themeChosen || loadedBackground !== theme.background || (diceVisible && !readyDice.every(Boolean));
+  const loading = !themeChosen || loadedBackground !== theme.background || (diceVisible && !continuingOnline && !readyDice.every(Boolean));
   const canStartRoll = !loading && humanTurn && !rolling && rollsLeft > 0 && !celebration;
   const canRoll = canStartRoll && !(dice.length > 0 && held.every(Boolean));
-  const canScore = phase === "playing" && dice.length === 5 && !rolling && !celebration;
+  const canScore = (phase === "playing" || (!!online && phase === "handoff")) && humanTurn && dice.length === 5 && !rolling && !celebration;
   const round = Math.min(13, Math.min(...players.map((item) => item.scores.filter((score) => score !== null).length)) + 1);
   const rankedOptions = canScore ? rankScoreOptions(dice, player.scores) : [];
   const scoreOptions = [...rankedOptions].sort((a, b) => a.index - b.index);
@@ -209,18 +252,18 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
 
   function chooseScore(index: number) {
     if (!canScore) return;
-    dispatch({ type: "score", index });
+    if (online) online.act("score", index); else dispatch({ type: "score", index });
     setAllScoresOpen(false);
   }
 
   useEffect(() => {
-    if (!rolling || isBusy) return;
+    if (online || !rolling || isBusy) return;
     const timer = window.setTimeout(() => dispatch({ type: "settle" }), ROLL_DURATION);
     return () => window.clearTimeout(timer);
   }, [rolling, isBusy, rollId]);
 
   useEffect(() => {
-    if (loading || phase !== "computer" || celebration) return;
+    if (online || loading || phase !== "computer" || celebration) return;
     let cancelled = false;
     const pause = (duration: number) => new Promise<void>((resolve) => window.setTimeout(resolve, duration));
     async function play() {
@@ -247,7 +290,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
 
   function roll() {
     if (!canRoll) return;
-    dispatch({ type: "roll", dice: dice.length ? dice.map((die, index) => held[index] ? die : rollDie()) : rollFive() });
+    if (online) online.act("roll"); else dispatch({ type: "roll", dice: dice.length ? dice.map((die, index) => held[index] ? die : rollDie()) : rollFive() });
   }
 
   function rollFiveKind() {
@@ -257,6 +300,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
   }
 
   function startGame(mode: GameMode) {
+    setContinuingOnline(false);
     setTheme(randomGameTheme(theme.id));
     setPlayersWhoHeld([]);
     dispatch({ type: "reset", mode });
@@ -284,7 +328,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
   const scorecard = (
     <div className="scoreboard-card">
         <h2 className="scorecard-title">Scorecard</h2>
-        <p className="device-high-score">Device high score: <span>{deviceHighScore ?? "—"}</span></p>
+        <HighScore deviceScore={deviceHighScore} className="device-high-score" />
         <div className="score-table-wrap" tabIndex={0} role="region" aria-label="Player scores">
           <table className={`score-table${players.length > 2 ? " score-table-multi" : ""}`}>
             <colgroup>
@@ -294,7 +338,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
             <thead><tr>
               <th scope="col">Player</th>
               {players.map((item, index) => <th scope="col" key={item.name} className={phase !== "finished" && index === currentPlayer ? "column-active" : ""} title={item.computer ? "Computer opponent" : item.name} aria-label={item.name}>
-                {index + 1}
+                {online ? item.name : index + 1}
               </th>)}
             </tr></thead>
             <tbody>
@@ -317,16 +361,18 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
     {loading && <GameLoading error={backgroundError} onRetry={() => { setBackgroundError(false); setLoadAttempt((attempt) => attempt + 1); }} />}
     <div className={`game-wrapper${loading ? " is-loading" : ""}`} inert={loading} aria-hidden={loading} aria-busy={loading}><main className="page-shell">
     <header className="topbar">
-      <button className="header-button new-game-button" type="button" onClick={() => { setNextMode(state.mode); setSetupOpen(true); }}>New game</button>
+      <button className="header-button new-game-button" type="button" onClick={() => { if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
       <h1 className="brand-name">Pips &amp; Petals</h1>
       <div className="topbar-right">
         <details className="mobile-menu" onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
           <summary aria-label="Game menu"><List size={24} aria-hidden="true" /></summary>
           <div className="mobile-menu-panel">
-            <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setNextMode(state.mode); setSetupOpen(true); }}>New game</button>
+            <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
             <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setHelpOpen(true); }}>How to play</button>
+            <button type="button" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setLeaderboardOpen(true); }}>Leaderboard</button>
+            {isLoaded && (isSignedIn ? <><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; openUserProfile(); }}>Account</button><SignOutButton><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Log out</button></SignOutButton></> : <SignInButton mode="modal"><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Login</button></SignInButton>)}
             {install.showInstall && <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; install.openInstall(); }}>Install</button>}
-            <p className="mobile-menu-high-score">Device high score <span>{deviceHighScore ?? "—"}</span></p>
+            <HighScore deviceScore={deviceHighScore} className="mobile-menu-high-score" />
           </div>
         </details>
       </div>
@@ -334,30 +380,31 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
 
     <section className={`game-layout${players.length > 2 ? " game-layout-multi" : ""}`} aria-label="Pips & Petals game">
       <div className="play-column">
-        <div className="play-card">
+        <div className={`play-card${online ? " online-play-card" : ""}`}>
+          {online && <div className="online-player-strip">Playing {online.opponent} online</div>}
           <div className="play-card-top">
             <span className="round-mini">Round {round} of 13</span>
           </div>
           <div className="dice-stage">
             {phase === "finished" ? <p className="turn-message match-result" aria-live="polite">{matchResult(players)}</p>
-              : phase === "handoff" ? <p className="turn-message">Pass the device to {player.name}.</p>
-                : <div className="dice-display">
-                  <Dice values={dice.length ? dice : [1, 1, 1, 1, 1]} unrolled={!dice.length} held={held} onToggle={isBusy ? undefined : (index) => { if (!held[index]) setPlayersWhoHeld((players) => players.includes(currentPlayer) ? players : [...players, currentPlayer]); dispatch({ type: "hold", index }); }} disabled={!dice.length || rolling || !humanTurn || rollsLeft === 0} rolling={rolling} rollId={rollId} label={dice.length ? `${player.name}’s dice` : "Roll the dice to start"} animateWithReducedMotion={diceMotion.animateDice} shading={diceShading} onReadyChange={updateDieReady} />
+              : phase === "handoff" && !online ? <p className="turn-message">Pass the device to {player.name}.</p>
+                : <div className={`dice-display${dice.length ? "" : " dice-awaiting-roll"}`} aria-hidden={!dice.length || undefined}>
+                  <Dice values={dice.length ? dice : [1, 1, 1, 1, 1]} unrolled={!dice.length} held={held} onToggle={isBusy ? undefined : (index) => { if (!held[index]) setPlayersWhoHeld((players) => players.includes(currentPlayer) ? players : [...players, currentPlayer]); if (online) online.act("hold", index); else dispatch({ type: "hold", index }); }} disabled={!dice.length || rolling || !humanTurn || rollsLeft === 0} rolling={rolling} rollId={rollId} label={dice.length ? `${player.name}’s dice` : "Roll the dice to start"} animateWithReducedMotion={diceMotion.animateDice} shading={diceShading} onReadyChange={updateDieReady} />
                   {humanTurn && dice.length > 0 && rollsLeft > 0 && !rolling && !jokerChoice && player.scores.every((score) => score === null) && !playersWhoHeld.includes(currentPlayer) && <span className="hold-instruction">Select dice to hold</span>}
                 </div>}
           </div>
           <div className="play-actions">
-            {phase === "handoff" ? <button className="roll-button" type="button" onClick={() => dispatch({ type: "ready" })}>{player.name} is ready</button>
-              : phase === "finished" ? <button className="roll-button" type="button" onClick={() => startGame(state.mode)}>Play again</button>
+            {online && !onlineTurn && phase !== "finished" ? <span className="roll-count flower-status-pill">{online.forfeited ? "You forfeited this game" : `${player.name}’s turn`}</span> : phase === "handoff" && !online ? <button className="roll-button" type="button" onClick={() => dispatch({ type: "ready" })}>{player.name} is ready</button>
+              : phase === "finished" ? <button className="roll-button" type="button" onClick={() => online ? online.leave() : startGame(state.mode)}>Play again</button>
                 : rollsLeft > 0 ? <button className="roll-button" type="button" onClick={roll} disabled={!canRoll}>
                   <span>{isBusy ? "Computer’s turn" : jokerChoice ? "Choose a score" : dice.length ? "Roll again" : "Roll the dice"}</span>
                   {humanTurn && <span className="roll-count" role="status">{rollsLeft} {rollsLeft === 1 ? "roll" : "rolls"} left</span>}
                 </button> : null}
-            {humanTurn && rollsLeft === 0 && <span className="roll-count" role="status">0 rolls left</span>}
+            {humanTurn && rollsLeft === 0 && <span className="roll-count flower-status-pill" role="status">0 rolls left</span>}
           </div>
         </div>
 
-        <div className="scoring-heading"><span>{phase === "finished" ? "A lovely game, well played" : phase === "handoff" ? "A fresh turn awaits" : canScore ? "Tap a card to score" : isBusy ? `${player.name}’s turn` : rolling ? "Rolling…" : "Roll to find your next score"}</span></div>
+        <div className="scoring-heading"><span>{phase === "finished" ? "A lovely game, well played" : phase === "handoff" && !online ? "A fresh turn awaits" : canScore ? "Tap a card to score" : isBusy ? `Waiting for ${player.name}` : rolling ? "Rolling…" : "Roll to find your next score"}</span></div>
         <div className="score-suggestions" aria-label="Suggested scores">
           {Array.from({ length: 3 }, (_, position) => <SuggestedScore key={position} suggestion={suggestions[position]} onChoose={chooseScore} />)}
           <button className="suggestion-card choose-score-button" type="button" disabled={suggestions.filter(Boolean).length !== 3} aria-hidden={suggestions.filter(Boolean).length !== 3 || undefined} onClick={() => setAllScoresOpen(true)}>
@@ -369,7 +416,7 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
         </div>
         <div className="play-utilities">
           <DiceMotionToggle {...diceMotion} />
-          {process.env.NODE_ENV === "development" && <details className="dev-controls">
+          {!online && process.env.NODE_ENV === "development" && <details className="dev-controls">
             <summary>Dev mode</summary>
             <div className="dev-controls-panel">
               <label className="dev-dice-color">Dice surface <input type="color" value={surfaceColor ?? GAME_DICE_SHADING.surfaceColor} onChange={(event) => setSurfaceColor(event.target.value)} /></label>
@@ -383,14 +430,16 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
             </div>
           </details>}
         </div>
-        <div className="live-status" aria-live="polite">{phase === "finished" ? "" : status}</div>
         <button className="header-button scorecard-toggle" type="button" aria-haspopup="dialog" aria-expanded={scorecardOpen} aria-controls={scorecardOpen ? "scorecard-popup" : undefined} onClick={() => setScorecardOpen(true)}>Scorecard</button>
       </div>
 
       {!compactScorecard && scorecard}
     </section>
 
+    {!online && phase === "finished" && process.env.NEXT_PUBLIC_CONVEX_URL && <SubmitScore players={players.filter(player => !player.computer)} />}
+
     {install.dialog}
+    {leaderboardOpen && <LeaderboardPopup onClose={() => setLeaderboardOpen(false)} />}
     {compactScorecard && scorecardOpen && <ScorecardPopup onClose={() => setScorecardOpen(false)}>{scorecard}</ScorecardPopup>}
 
     {allScoresOpen && <ScoreChoices options={scoreOptions} onChoose={chooseScore} onClose={() => setAllScoresOpen(false)} />}
@@ -403,15 +452,17 @@ export default function Game({ initialMode = "solo" }: { initialMode?: GameMode 
         <h2 id="setup-title">New game</h2>
         <fieldset className="game-mode-options">
           <legend>Players</legend>
-          {GAME_MODES.map(({ mode, title, description }) => <button className="game-mode-option" type="button" key={mode} aria-pressed={nextMode === mode} onClick={() => setNextMode(mode)}>
+          {GAME_MODES.map(({ mode, title, description }) => <button className="game-mode-option" type="button" key={mode} aria-pressed={nextMode === mode} onClick={() => { setNextMode(mode); if (mode === "online2") { setSetupOpen(false); setLobbyOpen(true); } }}>
             <span><strong>{title}</strong><span className="game-mode-description">{description}</span></span>
             <span className="game-mode-check" aria-hidden="true">{nextMode === mode ? "✓" : ""}</span>
           </button>)}
         </fieldset>
         {players.some((item) => item.scores.some((score) => score !== null)) && <p>Starting a new game resets the current scores.</p>}
-        <button className="rules-done" type="button" onClick={() => startGame(nextMode)}>Start game</button>
+        <button className="rules-done" type="button" onClick={() => { if (nextMode === "online2") { setSetupOpen(false); setLobbyOpen(true); } else startGame(nextMode); }}>Start game</button>
       </section>
     </div>}
+
+    {lobbyOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setLobbyOpen(false); }}><section className="rules-modal setup-modal" role="dialog" aria-modal="true" aria-labelledby="setup-title"><button className="modal-close" type="button" onClick={() => setLobbyOpen(false)} aria-label="Close online lobby">×</button><OnlineLobby onBack={() => { setLobbyOpen(false); setSetupOpen(true); }} /></section></div>}
 
     {helpOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setHelpOpen(false); }}>
       <section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title">

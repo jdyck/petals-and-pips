@@ -1,3 +1,5 @@
+import { ConvexProvider } from "./components/convex-provider";
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Nunito_Sans } from "next/font/google";
 import "./globals.css";
@@ -49,7 +51,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${nunitoSans.variable} ${display.variable}`}>
-      <body>{children}</body>
+      <body>
+        <ClerkProvider>
+          <ConvexProvider>{children}</ConvexProvider>
+        </ClerkProvider>
+      </body>
     </html>
   );
 }
