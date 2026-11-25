@@ -98,10 +98,20 @@ test("device imports keep the highest account score and its name", async () => {
   const t = convexTest(schema, modules);
   const alice = t.withIdentity({subject: "alice"});
   await expect(t.mutation(api.play.importDevice, {name: "Player", score: 200})).rejects.toThrow();
+  await expect(alice.mutation(api.play.importDevice, {name: "", score: 200})).rejects.toThrow();
+  expect(await alice.query(api.play.myScore, {})).toBeNull();
   await alice.mutation(api.play.importDevice, {name: "Alice", score: 200});
   await alice.mutation(api.play.importDevice, {name: "Player", score: 150});
   expect(await alice.query(api.play.myScore, {})).toBe(200);
   await alice.mutation(api.play.importDevice, {name: "Player", score: 250});
   expect(await alice.query(api.play.myScore, {})).toBe(250);
   expect((await alice.query(api.play.leaders, {}))[0].name).toBe("Alice");
+});
+
+test("a placeholder score can be renamed after profile setup", async () => {
+  const t = convexTest(schema, modules);
+  const player = t.withIdentity({subject: "player"});
+  await player.mutation(api.play.importDevice, {name: "Player", score: 200});
+  await player.mutation(api.play.updateScoreName, {name: "Rose"});
+  expect((await player.query(api.play.leaders, {}))[0]).toMatchObject({name: "Rose", score: 200});
 });

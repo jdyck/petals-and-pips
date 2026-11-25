@@ -177,6 +177,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, .score-table-wrap:f
 .celebration-points { margin: 12px 0; font-size: clamp(64px, 14vw, 88px); font-weight: 800; line-height: 1; }
 .five-kind-celebration .dice-tray { margin: 20px 0 0; }
 .five-kind-celebration > p:last-of-type { color: var(--ink-soft); }
+.high-score-celebration label { display: block; margin-top: 18px; }
+.high-score-celebration input, .high-score-celebration select { display: block; width: 100%; margin-top: 8px; padding: 10px; }
+.high-score-celebration .header-button { margin-top: 12px; }
 
 
 .rules-modal h2 { font: 400 34px/1.1 var(--display); }

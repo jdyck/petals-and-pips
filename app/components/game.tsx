@@ -165,8 +165,44 @@ export function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnTyp
 }
 
 export default function Game({ initialMode = "solo", initialState, initialTheme, online }: { initialMode?: GameMode; initialState?: GameState; initialTheme?: GameTheme; online?: { state: GameState; seat: number; count: number; forfeited: boolean; busy: boolean; rolling: boolean; act: (action: "roll" | "hold" | "score", index?: number) => void; leave: () => void; opponent: string } }) {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const { openUserProfile } = useClerk();
+  const [screenName, setScreenName] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
+  const [namePrompt, setNamePrompt] = useState(false);
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState("");
+  useEffect(() => {
+    setScreenName(null); setNamePrompt(false); setNameError("");
+    if (!isSignedIn || !user?.id) return;
+    let cancelled = false;
+    fetch("/api/screen-name").then(response => { if (!response.ok) throw new Error("Could not load your profile."); return response.json(); }).then(data => {
+      if (cancelled) return;
+      const name = typeof data.screenName === "string" ? data.screenName.trim() : "";
+      setScreenName(name); setNameInput(name); setNamePrompt(!name);
+    }).catch(() => { if (!cancelled) setNameError("Could not load your profile. Please try again later."); });
+    return () => { cancelled = true; };
+  }, [isSignedIn, user?.id]);
+  useEffect(() => {
+    function profileChanged(event: Event) {
+      const name = (event as CustomEvent<string>).detail;
+      setScreenName(name); setNameInput(name); setNamePrompt(false);
+    }
+    window.addEventListener("pips-screen-name-changed", profileChanged);
+    return () => window.removeEventListener("pips-screen-name-changed", profileChanged);
+  }, []);
+  async function saveScreenName(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (nameBusy) return;
+    setNameBusy(true); setNameError("");
+    try {
+      const response = await fetch("/api/screen-name", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ screenName: nameInput }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not save your screen name.");
+      setScreenName(data.screenName); setNameInput(data.screenName); setNamePrompt(false);
+    } catch (error) { setNameError(error instanceof Error ? error.message : "Could not save your screen name."); }
+    finally { setNameBusy(false); }
+  }
   const menuRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     function dismissMenu(event: PointerEvent) {
@@ -338,7 +374,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
   const scorecard = (
     <div className="scoreboard-card">
         <h2 className="scorecard-title">Scorecard</h2>
-        <HighScore deviceScore={deviceHighScore} className="device-high-score" />
+        <HighScore deviceScore={deviceHighScore} className="device-high-score" screenName={screenName} />
         <div className="score-table-wrap" tabIndex={0} role="region" aria-label="Player scores">
           <table className={`score-table${players.length > 2 ? " score-table-multi" : ""}`}>
             <colgroup>
@@ -380,9 +416,9 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
             <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
             <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setHelpOpen(true); }}>How to play</button>
             <button type="button" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setLeaderboardOpen(true); }}>Leaderboard</button>
-            {isLoaded && (isSignedIn ? <><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; openUserProfile(); }}>Account</button><SignOutButton><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Log out</button></SignOutButton></> : <SignInButton mode="modal"><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Login</button></SignInButton>)}
+            {isLoaded && (isSignedIn ? <>{screenName === "" && <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setNamePrompt(true); }}>Set screen name</button>}<button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; openUserProfile(); }}>Account</button><SignOutButton><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Log out</button></SignOutButton></> : <SignInButton mode="modal"><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Login</button></SignInButton>)}
             {install.showInstall && <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; install.openInstall(); }}>Install</button>}
-            <HighScore deviceScore={deviceHighScore} className="mobile-menu-high-score" />
+            <HighScore deviceScore={deviceHighScore} className="mobile-menu-high-score" screenName={screenName} />
           </div>
         </details>
       </div>
@@ -446,7 +482,16 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
       {!compactScorecard && scorecard}
     </section>
 
-    {!online && phase === "finished" && process.env.NEXT_PUBLIC_CONVEX_URL && <SubmitScore players={players.filter(player => !player.computer)} />}
+    {!online && process.env.NEXT_PUBLIC_CONVEX_URL && <SubmitScore players={players} finished={phase === "finished"} deviceScore={deviceHighScore} ready={!celebration && !namePrompt && !loading} />}
+
+    {namePrompt && !loading && <div className="modal-backdrop" role="presentation" onKeyDown={event => { if (event.key === "Escape" && !nameBusy) setNamePrompt(false); }}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="screen-name-title">
+      <button className="modal-close" type="button" disabled={nameBusy} onClick={() => setNamePrompt(false)} aria-label="Close">×</button>
+      <h2 id="screen-name-title">Choose your screen name</h2>
+      <p>You’re signed in, but your Appfun Games account doesn’t have a screen name yet. Choose one for the leaderboard and online games.</p>
+      <form className="online-lobby-form" onSubmit={saveScreenName}><label htmlFor="account-screen-name">Screen name</label><input id="account-screen-name" value={nameInput} onChange={event => setNameInput(event.target.value)} minLength={2} maxLength={24} required autoFocus /><button className="rules-done" type="submit" disabled={nameBusy}>Save screen name</button></form>
+      {nameError && <p role="alert">{nameError}</p>}
+      <button className="header-button" type="button" disabled={nameBusy} onClick={() => setNamePrompt(false)}>Maybe later</button>
+    </section></div>}
 
     {install.dialog}
     {leaderboardOpen && <LeaderboardPopup onClose={() => setLeaderboardOpen(false)} />}
