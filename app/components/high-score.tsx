@@ -9,11 +9,17 @@ function AccountHighScore({ deviceScore, className, screenName }: { deviceScore:
   const { isAuthenticated } = useConvexAuth();
   const score = useQuery(api.play.myScore, isAuthenticated ? {} : "skip");
   const updateScoreName = useMutation(api.play.updateScoreName);
+  const importDevice = useMutation(api.play.importDevice);
+  useEffect(() => {
+    if (!isAuthenticated || score === undefined || screenName === null || deviceScore === null || (score !== null && deviceScore <= score)) return;
+    void importDevice({ score: deviceScore, name: screenName.trim().length >= 2 ? screenName : "Player" }).catch(error => console.error("Could not sync device score:", error));
+  }, [isAuthenticated, score, screenName, deviceScore, importDevice]);
   useEffect(() => {
     if (!isAuthenticated || !screenName || score === undefined) return;
     void updateScoreName({ name: screenName }).catch(error => console.error("Could not update score name:", error));
   }, [isAuthenticated, score, screenName, updateScoreName]);
   if (isAuthenticated && score === undefined) return <p className={className}>Your high score: <span>—</span></p>;
+  if (deviceScore !== null && (score == null || deviceScore > score)) return <p className={className}>Device high score: <span>{deviceScore}</span></p>;
   return <p className={className}>{score != null ? "Your high score" : "Device high score"}: <span>{score ?? deviceScore ?? "—"}</span></p>;
 }
 

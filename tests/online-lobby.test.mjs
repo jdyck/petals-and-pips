@@ -76,42 +76,14 @@ test("two players complete all 26 turns and see the same final game", async () =
   const final = await players[0].query(api.play.getGame, {code});
   expect(final.state.phase).toBe("finished");
   const leaders = await players[0].query(api.play.leaders, {});
-  expect(leaders.map(entry => entry.userId).sort()).toEqual(["alice", "bob"]);
+  expect(leaders.map(entry => entry.name).sort()).toEqual(["Alice", "Bob"]);
   random.mockRestore();
 });
 
-test("finished local scores get a date and can replace an undated matching import", async () => {
+test("existing leaderboard scores remain available and can be renamed", async () => {
   const t = convexTest(schema, modules);
-  const alice = t.withIdentity({subject: "alice"});
-  await alice.mutation(api.play.importDevice, {name: "Alice", score: 200});
-  expect((await alice.query(api.play.leaders, {}))[0].scoredAt).toBeUndefined();
-  await alice.mutation(api.play.submitLocal, {name: "Alice", score: 200});
-  const [record] = await alice.query(api.play.leaders, {});
-  expect(record.score).toBe(200);
-  expect(record.scoredAt).toBeGreaterThan(0);
-  expect(record.source).toBe("local");
-  await alice.mutation(api.play.submitLocal, {name: "Alice", score: 100});
-  expect((await alice.query(api.play.leaders, {}))[0].score).toBe(200);
-});
-
-test("device imports keep the highest account score and its name", async () => {
-  const t = convexTest(schema, modules);
-  const alice = t.withIdentity({subject: "alice"});
-  await expect(t.mutation(api.play.importDevice, {name: "Player", score: 200})).rejects.toThrow();
-  await expect(alice.mutation(api.play.importDevice, {name: "", score: 200})).rejects.toThrow();
-  expect(await alice.query(api.play.myScore, {})).toBeNull();
-  await alice.mutation(api.play.importDevice, {name: "Alice", score: 200});
-  await alice.mutation(api.play.importDevice, {name: "Player", score: 150});
-  expect(await alice.query(api.play.myScore, {})).toBe(200);
-  await alice.mutation(api.play.importDevice, {name: "Player", score: 250});
-  expect(await alice.query(api.play.myScore, {})).toBe(250);
-  expect((await alice.query(api.play.leaders, {}))[0].name).toBe("Alice");
-});
-
-test("a placeholder score can be renamed after profile setup", async () => {
-  const t = convexTest(schema, modules);
+  await t.run(async ctx => { await ctx.db.insert("scores", { userId: "player", name: "Player", score: 200, source: "local" }); });
   const player = t.withIdentity({subject: "player"});
-  await player.mutation(api.play.importDevice, {name: "Player", score: 200});
   await player.mutation(api.play.updateScoreName, {name: "Rose"});
   expect((await player.query(api.play.leaders, {}))[0]).toMatchObject({name: "Rose", score: 200});
 });

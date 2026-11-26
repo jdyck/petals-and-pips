@@ -4,12 +4,11 @@ import { SignInButton, SignOutButton, useClerk, useUser } from "@clerk/nextjs";
 import { CaretRight, List } from "@phosphor-icons/react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import OnlinePage from "./online-page";
+import Leaderboard from "./leaderboard";
 import { OnlineLobby } from "./online-lobby";
 import { useHomeScreenInstall } from "./home-screen-install";
 import GameLoading from "./game-loading";
 import { DiceMotionToggle, useDiceMotion } from "./dice-motion";
-import { SubmitScore } from "./submit-score";
 import { HighScore } from "./high-score";
 import { useDeviceHighScore } from "./use-device-high-score";
 import { ROLL_DURATION, RollingDie } from "./rolling-die";
@@ -70,20 +69,6 @@ export function Dice({ values, held, onToggle, disabled, unrolled = false, rolli
       })}
     </div>
   );
-}
-
-function LeaderboardPopup({ onClose }: { onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const { openSignIn } = useClerk();
-  useEffect(() => {
-    const modal = dialog.current;
-    modal?.showModal();
-    return () => modal?.close();
-  }, []);
-  return <dialog ref={dialog} className="rules-modal leaderboard-modal" aria-label="Leaderboard" onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <button className="modal-close" type="button" autoFocus onClick={onClose} aria-label="Close leaderboard">×</button>
-    <OnlinePage view="leaderboard" embedded onSignIn={() => { dialog.current?.close(); onClose(); openSignIn(); }} />
-  </dialog>;
 }
 
 function Celebration({ award, onContinue, shading }: { award: FiveKindCelebration; onContinue: () => void; shading: DiceShading }) {
@@ -164,7 +149,7 @@ export function SuggestedScore({ suggestion, onChoose }: { suggestion: ReturnTyp
   </button>;
 }
 
-export default function Game({ initialMode = "solo", initialState, initialTheme, online }: { initialMode?: GameMode; initialState?: GameState; initialTheme?: GameTheme; online?: { state: GameState; seat: number; count: number; forfeited: boolean; busy: boolean; rolling: boolean; act: (action: "roll" | "hold" | "score", index?: number) => void; leave: () => void; opponent: string } }) {
+export default function Game({ initialMode = "solo", initialState, initialTheme, online, leaderboard = false }: { leaderboard?: boolean; initialMode?: GameMode; initialState?: GameState; initialTheme?: GameTheme; online?: { state: GameState; seat: number; count: number; forfeited: boolean; busy: boolean; rolling: boolean; act: (action: "roll" | "hold" | "score", index?: number) => void; leave: () => void; opponent: string } }) {
   const { isLoaded, isSignedIn, user } = useUser();
   const { openUserProfile } = useClerk();
   const [screenName, setScreenName] = useState<string | null>(null);
@@ -238,7 +223,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
     return () => { cancelled = true; };
   }, [theme.background, themeChosen, loadAttempt]);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+
   const [setupOpen, setSetupOpen] = useState(false);
   const [lobbyOpen, setLobbyOpen] = useState(false);
   useEffect(() => {
@@ -283,7 +268,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
   const isBusy = phase === "computer" || !onlineTurn;
   const humanTurn = onlineTurn && (phase === "ready" || phase === "playing" || (!!online && phase === "handoff"));
   const diceVisible = phase !== "handoff" && phase !== "finished";
-  const loading = !themeChosen || loadedBackground !== theme.background || (diceVisible && !continuingOnline && !readyDice.every(Boolean));
+  const loading = !leaderboard && (!themeChosen || loadedBackground !== theme.background || (diceVisible && !continuingOnline && !readyDice.every(Boolean)));
   const canStartRoll = !loading && humanTurn && !rolling && rollsLeft > 0 && !celebration;
   const canRoll = canStartRoll && !(dice.length > 0 && held.every(Boolean));
   const canScore = (phase === "playing" || (!!online && phase === "handoff")) && humanTurn && dice.length === 5 && !rolling && !celebration;
@@ -407,7 +392,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
     {loading && <GameLoading error={backgroundError} onRetry={() => { setBackgroundError(false); setLoadAttempt((attempt) => attempt + 1); }} />}
     <div className={`game-wrapper${loading ? " is-loading" : ""}`} inert={loading} aria-hidden={loading} aria-busy={loading}><main className="page-shell">
     <header className="topbar">
-      <button className="header-button new-game-button" type="button" onClick={() => { if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
+      <button className="header-button new-game-button" type="button" onClick={() => { if (leaderboard) window.location.href = "/"; else if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
       <h1 className="brand-name">Pips &amp; Petals</h1>
       <div className="topbar-right">
         <details ref={menuRef} className="mobile-menu" onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }} onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
@@ -415,7 +400,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
           <div className="mobile-menu-panel">
             <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; if (online) online.leave(); else { setNextMode(state.mode); setSetupOpen(true); } }}>{online ? "Leave game" : "New game"}</button>
             <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setHelpOpen(true); }}>How to play</button>
-            <button type="button" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setLeaderboardOpen(true); }}>Leaderboard</button>
+            <a href={leaderboard ? "/" : "/leaderboard"}>{leaderboard ? "Back to game" : "Leaderboard"}</a>
             {isLoaded && (isSignedIn ? <>{screenName === "" && <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; setNamePrompt(true); }}>Set screen name</button>}<button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; openUserProfile(); }}>Account</button><SignOutButton><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Log out</button></SignOutButton></> : <SignInButton mode="modal"><button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; }}>Login</button></SignInButton>)}
             {install.showInstall && <button type="button" onClick={(event) => { event.currentTarget.closest("details")!.open = false; install.openInstall(); }}>Install</button>}
             <HighScore deviceScore={deviceHighScore} className="mobile-menu-high-score" screenName={screenName} />
@@ -424,7 +409,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
       </div>
     </header>
 
-    <section className={`game-layout${players.length > 2 ? " game-layout-multi" : ""}`} aria-label="Pips & Petals game">
+    {leaderboard ? <Leaderboard /> : <section className={`game-layout${players.length > 2 ? " game-layout-multi" : ""}`} aria-label="Pips & Petals game">
       <div className="play-column">
         <div className={`play-card${online ? " online-play-card" : ""}`}>
           {online && <div className="online-player-strip">Playing {online.opponent} online</div>}
@@ -480,9 +465,9 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
       </div>
 
       {!compactScorecard && scorecard}
-    </section>
+    </section>}
 
-    {!online && process.env.NEXT_PUBLIC_CONVEX_URL && <SubmitScore players={players} finished={phase === "finished"} deviceScore={deviceHighScore} ready={!celebration && !namePrompt && !loading} />}
+    {!online && phase === "finished" && !celebration && <p>Local scores are saved on this device. Complete an online game to appear on the leaderboard.</p>}
 
     {namePrompt && !loading && <div className="modal-backdrop" role="presentation" onKeyDown={event => { if (event.key === "Escape" && !nameBusy) setNamePrompt(false); }}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="screen-name-title">
       <button className="modal-close" type="button" disabled={nameBusy} onClick={() => setNamePrompt(false)} aria-label="Close">×</button>
@@ -494,7 +479,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
     </section></div>}
 
     {install.dialog}
-    {leaderboardOpen && <LeaderboardPopup onClose={() => setLeaderboardOpen(false)} />}
+
     {compactScorecard && scorecardOpen && <ScorecardPopup onClose={() => setScorecardOpen(false)}>{scorecard}</ScorecardPopup>}
 
     {allScoresOpen && <ScoreChoices options={scoreOptions} onChoose={chooseScore} onClose={() => setAllScoresOpen(false)} />}

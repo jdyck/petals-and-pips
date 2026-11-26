@@ -5,7 +5,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { totalScore, type Participant } from "../lib/game";
-import { beatsLeaderboard, qualifyingHighScores } from "../lib/high-score-celebration";
+import { beatsLeaderboard, canAutomaticallyUpdate, previousHighScore, qualifyingHighScores } from "../lib/high-score-celebration";
 
 export function SubmitScore({ players, finished, deviceScore, ready }: { players: Participant[]; finished: boolean; deviceScore: number | null; ready: boolean }) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -14,6 +14,7 @@ export function SubmitScore({ players, finished, deviceScore, ready }: { players
   const accountScore = useQuery(api.play.myScore, isAuthenticated ? {} : "skip");
   const leaders = useQuery(api.play.leaders, isAuthenticated ? {} : "skip");
   const submit = useMutation(api.play.submitLocal);
+  const updateExisting = useMutation(api.play.updateExistingLocal);
   const previousDeviceScore = useRef<number | null>(null);
   const decided = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -25,15 +26,29 @@ export function SubmitScore({ players, finished, deviceScore, ready }: { players
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  const [autoFailedScore, setAutoFailedScore] = useState<number | null>(null);
+  async function updateScore(score: number) {
+    setAutoFailedScore(null);
+    try { await updateExisting({ score }); }
+    catch { setAutoFailedScore(score); }
+  }
   useEffect(() => {
     if (!finished) {
       previousDeviceScore.current = deviceScore;
       decided.current = false;
       setOpen(false); setDone(false); setEligible([]); setSelected(0);
+      setAutoFailedScore(null);
       return;
     }
     if (decided.current || !ready || !isLoaded || (isSignedIn && (!isAuthenticated || accountScore === undefined || leaders === undefined))) return;
-    const previous = isSignedIn ? accountScore : previousDeviceScore.current;
+    if (isSignedIn && accountScore != null && canAutomaticallyUpdate(players, accountScore)) {
+      decided.current = true;
+      void updateScore(Math.max(...players.filter(player => !player.computer).map(player => totalScore(player.scores, player.bonus))));
+      return;
+    }
+    const previous = isSignedIn && accountScore != null
+      ? accountScore
+      : previousHighScore(previousDeviceScore.current, null);
     const qualifying = qualifyingHighScores(players, previous ?? null);
     decided.current = true;
     if (!qualifying.length) return;
@@ -69,16 +84,18 @@ export function SubmitScore({ players, finished, deviceScore, ready }: { players
     } catch (e) { setError(e instanceof Error ? e.message : "Could not add your score."); }
     finally { setBusy(false); }
   }
+  if (finished && autoFailedScore !== null) return <p role="alert">Could not update your leaderboard score. <button type="button" onClick={() => void updateScore(autoFailedScore)}>Retry</button></p>;
   if (!finished || !eligible.length) return null;
   if (!open) return done ? null : <button className="header-button" type="button" onClick={() => setOpen(true)}>Add your score</button>;
   const score = totalScore(eligible[selected].scores, eligible[selected].bonus);
   const selectedIsGlobal = globalRecord && (!leaders?.length || score > leaders[0].score);
   return <dialog ref={dialog} className="five-kind-celebration high-score-celebration" aria-labelledby="personal-high-score-title" onCancel={event => { event.preventDefault(); if (!busy) setOpen(false); }}>
     <button className="modal-close" type="button" disabled={busy} onClick={() => setOpen(false)} aria-label="Close">×</button>
-    <p className="celebration-player">{eligible.length > 1 ? eligible[selected].name : "A lovely game, well played"}</p>
+    <p className="celebration-player">{players.filter(player => !player.computer).length > 1 ? eligible[selected].name : "A lovely game, well played"}</p>
     <h2 id="personal-high-score-title">{selectedIsGlobal ? "New High Score!" : "New Personal High Score!"}</h2>
     <div className="celebration-points">{score}</div><p>points</p>
     {eligible.length > 1 && <label>Your score <select value={selected} onChange={e => setSelected(Number(e.target.value))}>{eligible.map((player, index) => <option key={index} value={index}>{player.name} — {totalScore(player.scores, player.bonus)} points</option>)}</select></label>}
+    {players.filter(player => !player.computer).length > 1 && <p>Only add this score if it belongs to you.</p>}
     {!isLoaded ? <p>Loading…</p> : !isSignedIn ? <button className="rules-done" type="button" onClick={() => { dialog.current?.close(); setOpen(false); openSignIn(); }}>Sign in to add your score</button> : <>
       {name === null ? <p>Loading your profile…</p> : <label>Screen name <input value={name} maxLength={24} onChange={e => setName(e.target.value)} /></label>}
       <button className="rules-done" type="button" disabled={busy || !isAuthenticated || name === null} onClick={() => void save()}>Add to leaderboard</button>

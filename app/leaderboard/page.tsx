@@ -1,3 +1,3 @@
-import OnlinePage from "../components/online-page";
+import Game from "../components/game";
 
-export default function Page() { return <OnlinePage view="leaderboard" />; }
+export default function Page() { return <Game leaderboard />; }
