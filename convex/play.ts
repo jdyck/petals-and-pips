@@ -19,6 +19,15 @@ export const periodLeaders = query({ args: { since: v.number() }, handler: async
   for (const entry of [...entries, ...legacy.map(entry => ({ ...entry, scoredAt: entry.scoredAt! }))]) if (!best.has(entry.userId) || entry.score > best.get(entry.userId)!.score) best.set(entry.userId, entry);
   return [...best.values()].sort((a, b) => b.score - a.score || a.scoredAt - b.scoredAt).slice(0, 10).map(({ _id, name, score, scoredAt, source }) => ({ _id, name, score, scoredAt, source }));
 } });
+export const recordLocalGame = mutation({ args: { score: v.number(), name: v.string(), submissionId: v.string() }, handler: async (ctx, { score, name, submissionId }) => {
+  const id = await user(ctx);
+  if (!Number.isSafeInteger(score) || score < 0 || score > 1575 || submissionId.length < 1 || submissionId.length > 100) throw new Error("Invalid score.");
+  const existing = await ctx.db.query("scoreHistory").withIndex("by_submission", q => q.eq("userId", id).eq("submissionId", submissionId)).unique();
+  if (existing) return;
+  const validName = nameOf(name);
+  await ctx.db.insert("scoreHistory", { userId: id, name: validName, score, scoredAt: Date.now(), source: "local", submissionId });
+  await record(ctx, id, validName, score, undefined, "local");
+} });
 export const updateScoreName = mutation({ args: { name: v.string() }, handler: async (ctx, {name}) => { const id = await user(ctx); const score = await ctx.db.query("scores").withIndex("by_user", q => q.eq("userId", id)).unique(); if (score) await ctx.db.patch(score._id, {name: nameOf(name)}); } });
 export const myScore = query({ args: {}, handler: async (ctx) => { const id = await user(ctx); const score = await ctx.db.query("scores").withIndex("by_user", q => q.eq("userId", id)).unique(); return score?.score ?? null; } });
 // Device imports are unverified; other local score submissions remain disabled.

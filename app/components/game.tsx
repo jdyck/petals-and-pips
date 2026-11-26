@@ -1,5 +1,7 @@
 "use client";
 
+import { SaveLocalScore } from "./save-local-score";
+
 import { SignInButton, SignOutButton, useClerk, useUser } from "@clerk/nextjs";
 import { CaretRight, List } from "@phosphor-icons/react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -467,7 +469,7 @@ export default function Game({ initialMode = "solo", initialState, initialTheme,
       {!compactScorecard && scorecard}
     </section>}
 
-    {!online && phase === "finished" && !celebration && <p>Local scores are saved on this device. Complete an online game to appear on the leaderboard.</p>}
+    {!online && phase === "finished" && !celebration && (players.filter(p => !p.computer).length === 1 && process.env.NEXT_PUBLIC_CONVEX_URL ? <SaveLocalScore score={totalScore(players.find(p => !p.computer)!.scores, players.find(p => !p.computer)!.bonus)} name={screenName} /> : <p>Local multiplayer scores are saved on this device.</p>)}
 
     {namePrompt && !loading && <div className="modal-backdrop" role="presentation" onKeyDown={event => { if (event.key === "Escape" && !nameBusy) setNamePrompt(false); }}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="screen-name-title">
       <button className="modal-close" type="button" disabled={nameBusy} onClick={() => setNamePrompt(false)} aria-label="Close">×</button>

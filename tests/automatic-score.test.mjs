@@ -29,3 +29,18 @@ test("device import keeps the best score and does not add an undated score to pe
   await expect(player.mutation(api.play.importDevice, { name: "Rose", score: 1576 })).rejects.toThrow("Invalid device score");
   await expect(t.mutation(api.play.importDevice, { name: "Rose", score: 300 })).rejects.toThrow("Please sign in");
 });
+
+test("local games retain period scores below the all-time best and retries are idempotent", async () => {
+  const t = convexTest(schema, modules);
+  const player = t.withIdentity({ subject: "player" });
+  await player.mutation(api.play.recordLocalGame, { name: "Rose", score: 400, submissionId: "first" });
+  const since = Date.now();
+  await player.mutation(api.play.recordLocalGame, { name: "Rose", score: 250, submissionId: "second" });
+  await player.mutation(api.play.recordLocalGame, { name: "Rose", score: 250, submissionId: "second" });
+  expect(await player.query(api.play.myScore, {})).toBe(400);
+  const history = await t.run(ctx => ctx.db.query("scoreHistory").collect());
+  expect(history).toHaveLength(2);
+  expect((await player.query(api.play.periodLeaders, { since: since + 1 })).every(entry => entry.score !== 400)).toBe(true);
+  expect((await player.query(api.play.periodLeaders, { since: 0 }))[0].score).toBe(400);
+  await expect(player.mutation(api.play.recordLocalGame, { name: "Rose", score: 1576, submissionId: "bad" })).rejects.toThrow();
+});
